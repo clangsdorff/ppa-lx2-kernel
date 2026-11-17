@@ -15,6 +15,7 @@
 #ifdef CONFIG_HISI_PMALLOC
 
 
+#include <linux/gfp.h>
 #include <linux/genalloc.h>
 #include <linux/string.h>
 
