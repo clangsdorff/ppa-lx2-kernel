@@ -2234,6 +2234,12 @@ int pd_dpm_handle_combphy_event(struct pd_dpm_combphy_event event)
 	return 0;
 }
 #endif
+#ifndef CONFIG_CONTEXTHUB_PD
+int pd_dpm_get_otg_channel(void)
+{
+	return 0;
+}
+#endif
 
 static void pd_reinit_process(struct pd_dpm_info *di,
 	struct platform_device *pdev)
