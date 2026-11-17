@@ -33,7 +33,8 @@ def main(stock, kernel, out):
     struct.pack_into('<I', hdr, 8, len(k))
     cmd = bytes(hdr[64:576])
     cmd = cmd.replace(b'androidboot.selinux=enforcing', b'androidboot.selinux=permissive')
-    assert len(cmd) == 512
+    assert cmd[512:].strip(b'\0') == b''
+    cmd = cmd[:512]
     hdr[64:576] = cmd
     body = bytes(hdr)
     for name, blob in (('kernel', k), ('ramdisk', parts['ramdisk']),
