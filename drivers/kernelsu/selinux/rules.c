@@ -211,6 +211,11 @@ void apply_kernelsu_rules()
 {
 	struct policydb *db;
 
+#ifdef CONFIG_KSU_NO_SEPOLICY
+	pr_info("sepolicy patching disabled\n");
+	return;
+#endif
+
 	if (!getenforce()) {
 		pr_info("SELinux permissive or disabled, apply rules!\n");
 	}

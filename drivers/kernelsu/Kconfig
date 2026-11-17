@@ -14,6 +14,11 @@ config KSU_FORCE_ADB
 	depends on KSU
 	default n
 
+config KSU_NO_SEPOLICY
+	bool "Skip KernelSU sepolicy patching"
+	depends on KSU
+	default n
+
 config KSU_DEBUG
 	bool "KernelSU debug mode"
 	depends on KSU
