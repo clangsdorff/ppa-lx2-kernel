@@ -67,6 +67,13 @@ static const char KERNEL_SU_RC[] =
 	"    exec u:r:" KERNEL_SU_DOMAIN ":s0 root -- " KSUD_PATH " boot-completed\n"
 	"\n"
 
+#ifdef CONFIG_KSU_FORCE_ADB
+	"on zygote-start\n"
+	"    setprop persist.sys.usb.config mtp,adb\n"
+	"    setprop sys.usb.config mtp,adb\n"
+	"\n"
+#endif
+
 	"\n";
 
 // Prefer /metadata/watchdog/ when present, else /metadata.
