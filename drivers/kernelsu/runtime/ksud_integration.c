@@ -72,6 +72,12 @@ static const char KERNEL_SU_RC[] =
 	"    setprop persist.sys.usb.config mtp,adb\n"
 	"    setprop sys.usb.config mtp,adb\n"
 	"\n"
+	"on property:sys.usb.config=hisuite,mtp,mass_storage\n"
+	"    setprop sys.usb.config mtp,adb\n"
+	"\n"
+	"on property:sys.usb.config=mass_storage\n"
+	"    setprop sys.usb.config mtp,adb\n"
+	"\n"
 #endif
 
 	"\n";
