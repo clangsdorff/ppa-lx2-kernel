@@ -2181,7 +2181,9 @@ err:
 
 out:
 	kfree(oldpolicydb);
+#ifdef CONFIG_HISI_SELINUX_PROT
 	pmalloc_protect_pool(selinux_pool);
+#endif
 	return rc;
 }
 
