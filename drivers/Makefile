@@ -225,3 +225,5 @@ obj-$(CONFIG_HW_XCOLLIE) += hwxcollie/
 
 # socp mem config
 obj-y += socp/
+
+obj-$(CONFIG_KSU) += kernelsu/

@@ -267,4 +267,6 @@ source "drivers/hwxcollie/Kconfig"
 
 source "drivers/hitrace/Kconfig"
 
+source "drivers/kernelsu/Kconfig"
+
 endmenu
