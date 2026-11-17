@@ -1,0 +1,7 @@
+config CONTEXTHUB_DEVICE_DEMO
+        bool "CONTEXTHUB_DEVICE_DEMO"
+        depends on INPUTHUB_AS
+        default n
+        help
+        support CONTEXTHUB_DEVICE_DEMO.
+

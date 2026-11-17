@@ -1,0 +1,6 @@
+config SENSOR_CHANNEL
+	bool "SENSOR_CHANNEL"
+	depends on INPUTHUB_AS
+	help
+	support SENSOR_CHANNEL.
+
