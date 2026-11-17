@@ -543,4 +543,9 @@ config PPA_KMSG_FILE
 	bool "Periodically write the kernel log to /data/local/tmp"
 	default n
 
+config PPA_KMSG_DFX
+	bool "Periodically save the kernel log to the dfx partition"
+	depends on HISI_BB
+	default n
+
 endmenu

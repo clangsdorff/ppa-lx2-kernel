@@ -78,3 +78,4 @@ targets += lkdtm_rodata.o lkdtm_rodata_objcopy.o
 $(obj)/lkdtm_rodata_objcopy.o: $(obj)/lkdtm_rodata.o FORCE
 	$(call if_changed,objcopy)
 obj-$(CONFIG_PPA_KMSG_FILE)	+= ppa_kmsg_file.o
+obj-$(CONFIG_PPA_KMSG_DFX)	+= ppa_kmsg_dfx.o
