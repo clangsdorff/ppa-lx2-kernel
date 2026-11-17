@@ -1082,6 +1082,8 @@ struct platform_product_info {
 	uint32_t dfr_support;
 	uint32_t dummy_pixel_num;
 	uint32_t ifbc_type;
+	uint32_t dfr_method;
+	uint32_t reserved;
 };
 
 struct hiace_roi_info {

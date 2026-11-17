@@ -1318,6 +1318,7 @@ static int hisifb_dss_get_platform_product_info(struct hisi_fb_data_type *hisifd
 	get_platform_product_info.dummy_pixel_num = hisifd->panel_info.dummy_pixel_num;
 	get_platform_product_info.dfr_support = hisifd->panel_info.dfr_support;
 	get_platform_product_info.ifbc_type = hisifd->panel_info.ifbc_type;
+	get_platform_product_info.dfr_method = hisifd->panel_info.dfr_method;
 
 	if (copy_to_user(argp, &get_platform_product_info, sizeof(struct platform_product_info))) {
 		HISI_FB_ERR("copy to user fail!\n");
