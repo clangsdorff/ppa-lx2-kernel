@@ -145,6 +145,8 @@ enum {
 #ifdef CONFIG_USB_PD_UVDM_SUPPORT
 	TCP_NOTIFY_UVDM,
 #endif /* CONFIG_USB_PD_UVDM_SUPPORT */
+
+	TCP_NOTIFY_CABLE_VDO,
 };
 
 struct tcp_ny_pd_state {
@@ -240,6 +242,10 @@ struct tcp_ny_uvdm {
 	uint32_t *uvdm_data;
 };
 
+struct tcp_ny_cable_vdo {
+	uint32_t vdo;
+};
+
 struct tcp_notify {
 	union {
 		struct tcp_ny_enable_state en_state;	/* common */
@@ -252,6 +258,7 @@ struct tcp_notify {
 		struct tcp_ny_ama_dp_attention ama_dp_attention;
 		struct tcp_ny_ama_dp_hpd_state ama_dp_hpd_state;
 		struct tcp_ny_uvdm uvdm_msg;
+		struct tcp_ny_cable_vdo cable_vdo;
 	};
 };
 
@@ -476,7 +483,7 @@ extern int hisi_tcpm_get_sink_cap(struct tcpc_device *tcpc_dev, struct tcpm_powe
 extern int hisi_tcpm_get_local_sink_cap(struct tcpc_device *tcpc_dev, struct local_sink_cap *cap);
 extern int hisi_tcpm_request(struct tcpc_device *tcpc_dev, int mv, int ma);
 extern void hisi_tcpm_request_voltage(struct tcpc_device *tcpc_dev, int set_voltage);
-
+void hisi_tcpm_detect_emark_cable(struct tcpc_device *tcpc_dev);
 /* Request TCPM to send VDM */
 
 extern int hisi_tcpm_discover_cable(struct tcpc_device *tcpc_dev, uint32_t *vdos,
