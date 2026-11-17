@@ -599,6 +599,12 @@ static void coul_clear_cc_register(void)
 	di->ishort_info.cc_all += cc_temp;
 #endif
 	di->coul_dev_ops->clear_cc_register();
+	di->ocv_cc_offset = 0;
+}
+
+static int coul_get_ocv_cc_uah(struct smartstar_coul_device *di)
+{
+	return di->coul_dev_ops->calculate_cc_uah() - di->ocv_cc_offset;
 }
 
 /*******************************************************
@@ -1516,7 +1522,7 @@ static unsigned int recalc_chargecycles(struct smartstar_coul_device *di)
 		return -1;/*lint !e570*/
 	}
 	if (di->batt_soc == 100 && di->charging_begin_soc / 10 < MIN_BEGIN_PERCENT_FOR_LEARNING) {
-		cc_end = di->coul_dev_ops->calculate_cc_uah();
+		cc_end = coul_get_ocv_cc_uah(di);
 		temp = di->batt_temp;
 		real_fcc = (cc_end - di->charging_begin_cc) * 1000 / (1000 - di->charging_begin_soc);
 		fcc = interpolate_fcc(di, temp);
@@ -3665,6 +3671,30 @@ static int get_calc_ocv(struct smartstar_coul_device *di)
 	return ocv;
 }
 
+static int coul_estimate_initial_ocv(struct smartstar_coul_device *di,
+				     unsigned short ocvreg)
+{
+	int vbat_uv = 0;
+	int ibat_ua = 0;
+	int soc_rbatt;
+	int rbatt;
+	int ocv_uv;
+
+	coul_get_battery_voltage_and_current(di, &ibat_ua, &vbat_uv);
+	soc_rbatt = calculate_pc(di, vbat_uv, di->batt_temp,
+				 di->batt_chargecycles / 100);
+	rbatt = get_rbatt(di, soc_rbatt / 10, di->batt_temp);
+	ocv_uv = vbat_uv + (int)div_s64((s64)ibat_ua * rbatt, 1000);
+	if (vbat_uv > CAPACITY_INVALID_AREA_2500)
+		ocv_uv = clamp_val(ocv_uv, CAPACITY_INVALID_AREA_2500,
+				   CAPACITY_INVALID_AREA_4500);
+
+	coul_core_info("invalid ocvreg=0x%x, est_ocv=%d, v=%d, i=%d, rbatt=%d\n",
+		       ocvreg, ocv_uv, vbat_uv, ibat_ua, rbatt);
+
+	return ocv_uv;
+}
+
 /*******************************************************
   Function:        coul_get_initial_ocv
   Description:     get first ocv from register, hardware record it during system reset.
@@ -3709,9 +3739,18 @@ static void coul_get_initial_ocv(struct smartstar_coul_device *di)
 		coul_core_info("using pmu ocv from fastboot.\n");
 	}
 
-	di->batt_ocv_temp = di->coul_dev_ops->get_ocv_temp();
-	di->batt_ocv = ocv_uv;
-	di->coul_dev_ops->get_ocv_level(&(di->last_ocv_level));
+	if (ocv_uv <= CAPACITY_INVALID_AREA_2500) {
+		ocv_uv = coul_estimate_initial_ocv(di, ocvreg);
+		di->batt_ocv_temp = di->batt_temp;
+		di->batt_ocv = ocv_uv;
+		di->batt_ocv_valid_to_refresh_fcc = 0;
+		di->last_ocv_level = INVALID_SAVE_OCV_LEVEL;
+		di->ocv_cc_offset = di->coul_dev_ops->calculate_cc_uah();
+	} else {
+		di->batt_ocv_temp = di->coul_dev_ops->get_ocv_temp();
+		di->batt_ocv = ocv_uv;
+		di->coul_dev_ops->get_ocv_level(&(di->last_ocv_level));
+	}
 #ifdef CONFIG_HISI_DEBUG_FS
 	print_multi_ocv_threshold();
 #endif
@@ -4206,7 +4245,7 @@ static void calculate_soc_params(struct smartstar_coul_device *di,
 	di->batt_rm = *remaining_charge_uah;
 
 	/* calculate cc micro_volt_hour */
-	di->cc_end_value = di->coul_dev_ops->calculate_cc_uah();
+	di->cc_end_value = coul_get_ocv_cc_uah(di);
 	*cc_uah = di->cc_end_value;
 
 	di->batt_ruc = *remaining_charge_uah - *cc_uah;
@@ -5527,7 +5566,7 @@ static void coul_charging_begin(struct smartstar_coul_device *di)
 	basp_fcc_learn_evt_handler(di, EVT_START);
 
 	/*record cc value*/
-	di->charging_begin_cc = di->coul_dev_ops->calculate_cc_uah();
+	di->charging_begin_cc = coul_get_ocv_cc_uah(di);
 	di->charging_begin_time = di->coul_dev_ops->get_coul_time();
 #ifdef CONFIG_HISI_COUL_POLAR
 	clear_ishort_first_para();
@@ -5571,13 +5610,13 @@ static void coul_charging_stop(struct smartstar_coul_device *di)
 	if (fcc_update_limit_flag) {
 		di->batt_ocv_valid_to_refresh_fcc = 0;
 	}
-	cc = di->coul_dev_ops->calculate_cc_uah();
+	cc = coul_get_ocv_cc_uah(di);
 
 	rm = di->batt_rm - cc;
 	/* adjust rm */
 	if (rm > fcc_101) {
 		cc = cc + (rm - fcc_101);
-		di->coul_dev_ops->save_cc_uah(cc);
+		di->coul_dev_ops->save_cc_uah(cc + di->ocv_cc_offset);
 		di->batt_limit_fcc = 0;
 		di->is_nv_need_save = 1;
 		di->coul_dev_ops->set_nv_save_flag(NV_SAVE_FAIL);
@@ -5837,7 +5876,7 @@ void refresh_fcc(struct smartstar_coul_device *di)
 	}
 
 	charging_time    = di->coul_dev_ops->get_coul_time() - di->charging_begin_time;
-	delta_cc_uah     = di->coul_dev_ops->calculate_cc_uah() - di->charging_begin_cc;
+	delta_cc_uah     = coul_get_ocv_cc_uah(di) - di->charging_begin_cc;
 	if (charging_time > 0)
 		charging_iavg_ma = (div_s64((s64)delta_cc_uah * SEC_PER_HOUR, charging_time)) / UA_PER_MA;
 	else
@@ -5873,7 +5912,7 @@ void refresh_fcc(struct smartstar_coul_device *di)
 			snprintf(buff, (size_t)DSM_BUFF_SIZE_MAX, " [refresh fcc warning]old_fcc:%dmAh, new_fcc:%dmAh, delta_fcc:%dmAh, "
 				 "charging_beging_soc:%d, charging_begin_cc:%dmAh, charging_end_cc:%dmAh, temp:%d, basplevel:%d",
 				 di->fcc_real_mah, new_fcc_uah / UA_PER_MA, delta_fcc_uah / UA_PER_MA, di->charging_begin_soc, di->charging_begin_cc / UA_PER_MA,
-				 di->coul_dev_ops->calculate_cc_uah() / UA_PER_MA, di->batt_temp, di->basp_level);
+				 coul_get_ocv_cc_uah(di) / UA_PER_MA, di->batt_temp, di->basp_level);
 			coul_dsm_report_ocv_cali_info(di, ERROR_REFRESH_FCC_OUTSIDE, buff);
 		}
 		di->fcc_real_mah = new_fcc_uah / 1000;

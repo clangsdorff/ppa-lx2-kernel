@@ -749,6 +749,7 @@ struct smartstar_coul_device {
 	int batt_ocv; // ocv in uv
 	int batt_ocv_temp;
 	int batt_ocv_valid_to_refresh_fcc;
+	int ocv_cc_offset;
 	int batt_changed_flag;
 	int batt_reset_flag;
 	int soc_limit_flag;
