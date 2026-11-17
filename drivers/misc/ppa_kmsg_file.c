@@ -5,9 +5,10 @@
 #include <linux/vmalloc.h>
 #include <linux/workqueue.h>
 
-#define KMSG_PATH "/data/local/tmp/ppa_kmsg.txt"
+#define KMSG_PATH_A "/data/local/tmp/ppa_kmsg_a.txt"
+#define KMSG_PATH_B "/data/local/tmp/ppa_kmsg_b.txt"
 #define KMSG_BUF_SIZE (1 << CONFIG_LOG_BUF_SHIFT)
-#define KMSG_FIRST_DELAY (30 * HZ)
+#define KMSG_FIRST_DELAY (5 * HZ)
 #define KMSG_PERIOD (15 * HZ)
 #define KMSG_RUNS 40
 
@@ -20,6 +21,7 @@ static void kmsg_file_write(void)
 	struct file *f;
 	loff_t pos = 0;
 	size_t len = 0;
+	const char *path = (kmsg_runs & 1) ? KMSG_PATH_B : KMSG_PATH_A;
 	char *buf;
 
 	buf = vmalloc(KMSG_BUF_SIZE);
@@ -29,9 +31,10 @@ static void kmsg_file_write(void)
 	kmsg_dump_rewind(&dumper);
 	kmsg_dump_get_buffer(&dumper, false, buf, KMSG_BUF_SIZE, &len);
 
-	f = filp_open(KMSG_PATH, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	f = filp_open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (!IS_ERR(f)) {
 		kernel_write(f, buf, len, &pos);
+		vfs_fsync(f, 0);
 		filp_close(f, NULL);
 	}
 	vfree(buf);
