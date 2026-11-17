@@ -693,7 +693,8 @@ static void hisi_noc_err_property(struct device_node *np, struct noc_node *node)
 
 	/* err probe property */
 	if (noc_property_dt.error_enable) {
-		if (of_property_read_bool(np, "eprobe-autoenable"))
+		if (of_property_read_bool(np, "eprobe-autoenable") &&
+		    strcmp(np->name, "modem_transcation_bus"))
 			node->eprobe_autoenable = true;
 
 		ret = of_property_read_u32(np, "eprobe-hwirq", (u32 *) &node->eprobe_hwirq);
@@ -1149,7 +1150,7 @@ static void __hisi_noc_property(struct device_node *np)
 
 	/* Read PCTRL IRQ mask Form DTS. */
 	if (of_property_read_u64(np, "pctrl-irq-mask", &dts_u64_value) == 0)
-		noc_property_dt.pctrl_irq_mask = dts_u64_value;
+		noc_property_dt.pctrl_irq_mask = dts_u64_value & ~BIT_ULL(13);
 
 	/* Read PCTRL PERI STAT0 Offset Form DTS. */
 	if (of_property_read_u32(np, "pctrl-peri-stat0-offset", &dts_u32_value) == 0)
