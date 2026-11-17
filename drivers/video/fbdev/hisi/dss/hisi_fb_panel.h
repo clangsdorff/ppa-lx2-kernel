@@ -890,6 +890,7 @@ struct hisi_panel_info {
 	uint8_t comform_mode_support;
 	uint8_t cinema_mode_support;
 	uint8_t frc_enable;
+	uint32_t esd_check_time_period;
 	uint8_t esd_enable;
 	uint8_t esd_skip_mipi_check;
 	uint8_t esd_recover_step;

@@ -229,8 +229,13 @@ static enum hrtimer_restart hisifb_esd_hrtimer_fnc(struct hrtimer *timer)
 			queue_work(esd_ctrl->esd_check_wq, &(esd_ctrl->esd_check_work));
 		}
 	}
-	hrtimer_start(&esd_ctrl->esd_hrtimer, ktime_set(ESD_CHECK_TIME_PERIOD / 1000,
-		(ESD_CHECK_TIME_PERIOD % 1000) * 1000000), HRTIMER_MODE_REL);
+	if (hisifd->panel_info.esd_check_time_period) {
+		hrtimer_start(&esd_ctrl->esd_hrtimer, ktime_set(hisifd->panel_info.esd_check_time_period / 1000,
+			(hisifd->panel_info.esd_check_time_period % 1000) * 1000000), HRTIMER_MODE_REL);
+	} else {
+		hrtimer_start(&esd_ctrl->esd_hrtimer, ktime_set(ESD_CHECK_TIME_PERIOD / 1000,
+			(ESD_CHECK_TIME_PERIOD % 1000) * 1000000), HRTIMER_MODE_REL);
+	}
 
 	return HRTIMER_NORESTART;
 }
@@ -275,8 +280,13 @@ void hisifb_esd_register(struct platform_device *pdev)
 		/* hrtimer for ESD timing */
 		hrtimer_init(&esd_ctrl->esd_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		esd_ctrl->esd_hrtimer.function = hisifb_esd_hrtimer_fnc;
-		hrtimer_start(&esd_ctrl->esd_hrtimer, ktime_set(ESD_CHECK_TIME_PERIOD / 1000,
-			(ESD_CHECK_TIME_PERIOD % 1000) * 1000000), HRTIMER_MODE_REL);
+		if (hisifd->panel_info.esd_check_time_period) {
+			hrtimer_start(&esd_ctrl->esd_hrtimer, ktime_set(hisifd->panel_info.esd_check_time_period / 1000,
+				(hisifd->panel_info.esd_check_time_period % 1000) * 1000000), HRTIMER_MODE_REL);
+		} else {
+			hrtimer_start(&esd_ctrl->esd_hrtimer, ktime_set(ESD_CHECK_TIME_PERIOD / 1000,
+				(ESD_CHECK_TIME_PERIOD % 1000) * 1000000), HRTIMER_MODE_REL);
+		}
 
 		esd_ctrl->esd_inited = 1;
 	}

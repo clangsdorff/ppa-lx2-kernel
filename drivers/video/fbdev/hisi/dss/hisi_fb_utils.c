@@ -216,8 +216,13 @@ int hisifb_ctrl_on(struct hisi_fb_data_type *hisifd)
 	hisi_overlay_on(hisifd, false);
 
 	if (hisifd->panel_info.esd_enable) {
-		hrtimer_start(&hisifd->esd_ctrl.esd_hrtimer, ktime_set(ESD_CHECK_TIME_PERIOD / 1000,
-			(ESD_CHECK_TIME_PERIOD % 1000) * 1000000), HRTIMER_MODE_REL);
+		if (hisifd->panel_info.esd_check_time_period) {
+			hrtimer_start(&hisifd->esd_ctrl.esd_hrtimer, ktime_set(hisifd->panel_info.esd_check_time_period / 1000,
+				(hisifd->panel_info.esd_check_time_period % 1000) * 1000000), HRTIMER_MODE_REL);
+		} else {
+			hrtimer_start(&hisifd->esd_ctrl.esd_hrtimer, ktime_set(ESD_CHECK_TIME_PERIOD / 1000,
+				(ESD_CHECK_TIME_PERIOD % 1000) * 1000000), HRTIMER_MODE_REL);
+		}
 	}
 
 	if (hisifd->index == PRIMARY_PANEL_IDX) {
