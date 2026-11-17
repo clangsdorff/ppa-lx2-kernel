@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 #include <linux/fs.h>
+#include <linux/kernel.h>
 #include <linux/kmsg_dump.h>
 #include <linux/module.h>
 #include <linux/vmalloc.h>
@@ -18,10 +19,15 @@ static int kmsg_runs;
 static void kmsg_file_write(void)
 {
 	struct kmsg_dumper dumper = { .active = true };
-	struct file *f;
+	struct file *f, *st;
 	loff_t pos = 0;
 	size_t len = 0;
+	ssize_t wret = -1;
+	int fret = -1;
+	int hlen;
 	const char *path = (kmsg_runs & 1) ? KMSG_PATH_B : KMSG_PATH_A;
+	char hdr[64];
+	char st_path[128];
 	char *buf;
 
 	buf = vmalloc(KMSG_BUF_SIZE);
@@ -33,10 +39,25 @@ static void kmsg_file_write(void)
 
 	f = filp_open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (!IS_ERR(f)) {
-		kernel_write(f, buf, len, &pos);
-		vfs_fsync(f, 0);
+		hlen = snprintf(hdr, sizeof(hdr), "ppa run=%d len=%zu\n",
+				kmsg_runs, len);
+		if (hlen > 0)
+			wret = kernel_write(f, hdr, hlen, &pos);
+		if (len > 0)
+			wret = kernel_write(f, buf, len, &pos);
+		fret = vfs_fsync(f, 0);
 		filp_close(f, NULL);
+	} else {
+		wret = PTR_ERR(f);
 	}
+
+	snprintf(st_path, sizeof(st_path),
+		 "/data/local/tmp/ppa_st_%d_%zu_%zd_%d",
+		 kmsg_runs, len, wret, fret);
+	st = filp_open(st_path, O_WRONLY | O_CREAT, 0644);
+	if (!IS_ERR(st))
+		filp_close(st, NULL);
+
 	vfree(buf);
 }
 
