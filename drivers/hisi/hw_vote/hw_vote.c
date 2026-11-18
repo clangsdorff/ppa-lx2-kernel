@@ -348,6 +348,58 @@ out:
 }
 /*lint -restore */
 
+static ssize_t vote_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	unsigned int ch, id, vote, res;
+	struct hvdev *hv;
+	ssize_t n = 0;
+
+	mutex_lock(&hv_array_mutex);
+	for (ch = 0; ch < hv_channel_size; ch++) {
+		for (id = 0; id < hv_channel_array[ch].hvdev_num; id++) {
+			hv = &hv_channel_array[ch].hvdev_head[id];
+			vote = res = 0;
+			hisi_hv_get_freq(hv, &vote);
+			hisi_hv_get_result(hv, &res);
+			n += scnprintf(buf + n, PAGE_SIZE - n, "%s %s vote=%u last=%u result=%u\n",
+				       hv_channel_array[ch].name, HVDEV_NAME(hv), vote, hv->last_set, res);
+		}
+	}
+	mutex_unlock(&hv_array_mutex);
+
+	return n;
+}
+
+/* "<channel> <vsrc> <khz>": raw vote, bypasses cpufreq/devfreq tables */
+static ssize_t vote_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
+{
+	char ch_name[CHANNEL_NAME_MAX + 1], vsrc[VSRC_NAME_MAX + 1];
+	unsigned int ch, id, khz;
+	struct hvdev *hv;
+	int ret = -ENODEV;
+
+	if (sscanf(buf, "%30s %30s %u", ch_name, vsrc, &khz) != 3)
+		return -EINVAL;
+
+	mutex_lock(&hv_array_mutex);
+	for (ch = 0; ch < hv_channel_size; ch++) {
+		if (strncmp(hv_channel_array[ch].name, ch_name, CHANNEL_NAME_MAX))
+			continue;
+		for (id = 0; id < hv_channel_array[ch].hvdev_num; id++) {
+			hv = &hv_channel_array[ch].hvdev_head[id];
+			if (!strncmp(HVDEV_NAME(hv), vsrc, VSRC_NAME_MAX)) {
+				ret = hisi_hv_set_freq(hv, khz);
+				break;
+			}
+		}
+	}
+	mutex_unlock(&hv_array_mutex);
+
+	return ret ? ret : count;
+}
+static DEVICE_ATTR(vote, 0600, vote_show, vote_store);
+
 static int hisi_hv_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -437,6 +489,9 @@ static int hisi_hv_probe(struct platform_device *pdev)
 
 	mutex_unlock(&hv_array_mutex);
 
+	if (device_create_file(dev, &dev_attr_vote))
+		dev_err(dev, "vote sysfs create fail\n");
+
 	return 0;
 out_unlock:
 	hv_channel_array = NULL;
@@ -448,6 +503,7 @@ out:
 
 static int hisi_hv_remove(struct platform_device *pdev)
 {
+	device_remove_file(&pdev->dev, &dev_attr_vote);
 	mutex_lock(&hv_array_mutex);
 	hv_channel_array = NULL;
 	hv_channel_size  = 0;
