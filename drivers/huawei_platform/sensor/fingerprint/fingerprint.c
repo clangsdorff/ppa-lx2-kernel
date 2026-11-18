@@ -21,6 +21,13 @@
 #include <linux/gpio.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
+#include <linux/io.h>
+#include <linux/hisi/hisi_idle_sleep.h>
+#include <linux/compat.h>
+#include <linux/poll.h>
+#include <asm/unaligned.h>
+#include <linux/wait.h>
+#include <linux/spi/spidev.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -583,6 +590,442 @@ static ssize_t ud_fingerprint_chip_info_show(struct device *device,
 	return chip_info_show(device, OPTICAL, buf);
 }
 
+static void fingerprint_sensor_poweron(struct fp_data *fp, int ldo_type);
+
+union fp_spi_ctrl {
+	u32 data;
+	struct {
+		u32 gpio_cs : 16;
+		u32 baudrate : 5;
+		u32 mode : 2;
+		u32 bits_per_word : 5;
+		u32 rsv_28_31 : 4;
+	} b;
+};
+
+extern int mcu_spi_rw(u8 bus_num, union fp_spi_ctrl ctrl, u8 *tx,
+		      u32 tx_len, u8 *rx_out, u32 rx_len);
+
+#define SIL_MSG_IRQ		1
+#define SIL_MSG_DISCONNECT	5
+#define SIL_MSG_QLEN		16
+#define SIL_SPI_BUS		2
+#define SIL_SPI_MAX_XFER	2048
+#define SIL_SPI_MAX_WR		120
+#define SIL_SPI_MAX_MSGS	16
+
+static DEFINE_MUTEX(sil_lock);
+static DEFINE_SPINLOCK(sil_q_lock);
+static DECLARE_WAIT_QUEUE_HEAD(sil_wq);
+static u8 sil_q[SIL_MSG_QLEN];
+static unsigned int sil_q_head;
+static unsigned int sil_q_cnt;
+static bool sil_inited;
+static bool sil_vote_held;
+static struct file *sil_owner;
+static bool sil_first_read;
+static u8 sil_spi_mode;
+static u8 sil_spi_bits = 8;
+static u8 sil_spi_lsb;
+static u32 sil_spi_speed = 8000000;
+static u32 sil_spi_mode32;
+static u8 sil_dbg_level;
+
+static int sil_rd_chunk = 32;
+module_param(sil_rd_chunk, int, 0644);
+static int sil_hdr3_prime = 1;
+module_param(sil_hdr3_prime, int, 0644);
+static int sil_frame_w36 = 1;
+module_param(sil_frame_w36, int, 0644);
+
+#define SIL_FRAME_SRC_W		32
+#define SIL_FRAME_OUT_W		36
+#define SIL_FRAME_ROWS		160
+#define SIL_FRAME_OUT_LEN	(SIL_FRAME_OUT_W * SIL_FRAME_ROWS)
+#define SIL_REG_PAGE		0xf0
+#define SIL_WIN_PAGE		(0xff080150 >> 7)
+#define SIL_WIN_REG		(0xff080150 & 0x7f)
+#define SIL_WIN_W36		8
+
+enum { SIL_FW_IDLE, SIL_FW_ARMED, SIL_FW_ACTIVE };
+
+static u32 sil_page;
+static u32 sil_win;
+static int sil_fw_state;
+static u32 sil_fw_off;
+static int sil_fw_row = -1;
+static u8 sil_fw_buf[SIL_FRAME_SRC_W];
+
+static void sil_queue_msg(u8 msg)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&sil_q_lock, flags);
+	if (sil_q_cnt < SIL_MSG_QLEN) {
+		sil_q[(sil_q_head + sil_q_cnt) % SIL_MSG_QLEN] = msg;
+		sil_q_cnt++;
+	}
+	spin_unlock_irqrestore(&sil_q_lock, flags);
+	wake_up_interruptible(&sil_wq);
+}
+
+static bool sil_queue_pop(u8 *msg)
+{
+	unsigned long flags;
+	bool ok = false;
+
+	spin_lock_irqsave(&sil_q_lock, flags);
+	if (sil_q_cnt) {
+		*msg = sil_q[sil_q_head];
+		sil_q_head = (sil_q_head + 1) % SIL_MSG_QLEN;
+		sil_q_cnt--;
+		ok = true;
+	}
+	spin_unlock_irqrestore(&sil_q_lock, flags);
+	return ok;
+}
+
+static void sil_queue_drop(int msg)
+{
+	unsigned long flags;
+	unsigned int i, n = 0;
+	u8 tmp[SIL_MSG_QLEN];
+
+	spin_lock_irqsave(&sil_q_lock, flags);
+	for (i = 0; i < sil_q_cnt; i++) {
+		u8 m = sil_q[(sil_q_head + i) % SIL_MSG_QLEN];
+
+		if (msg < 0 || m == msg)
+			continue;
+		tmp[n++] = m;
+	}
+	memcpy(sil_q, tmp, n);
+	sil_q_head = 0;
+	sil_q_cnt = n;
+	spin_unlock_irqrestore(&sil_q_lock, flags);
+}
+
+static union fp_spi_ctrl sil_spi_ctrl(struct fp_data *fp)
+{
+	union fp_spi_ctrl ctrl;
+
+	ctrl.data = (u32)(gpio_is_valid(fp->cs0_gpio) ? fp->cs0_gpio : 217);
+	return ctrl;
+}
+
+static int sil_spi_tx(union fp_spi_ctrl ctrl, u8 *tx, u32 len)
+{
+	if (len & 1) {
+		pr_err("%s: odd tx_len %u rejected\n", __func__, len);
+		return -EINVAL;
+	}
+	return mcu_spi_rw(SIL_SPI_BUS, ctrl, tx, len, NULL, 0) ? -EIO : 0;
+}
+
+/*
+ * Frame read: sensor streams 32 byte rows, blob expects 36 per row.
+ * Columns 32..35 repeat column 31 of the row. Sensor reads are 32 B rows
+ * in output order, nothing is read past the last row.
+ */
+static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
+{
+	static const u8 rd[2] = { 0x00, 0x00 };
+	u32 i, dlen = len - hdr;
+	u8 *out = rx + hdr;
+	int r;
+
+	if (sil_fw_state == SIL_FW_ARMED) {
+		sil_fw_state = SIL_FW_ACTIVE;
+		sil_fw_off = 0;
+		sil_fw_row = -1;
+		if (hdr == 3) {
+			r = sil_spi_tx(ctrl, (u8 *)rd, 2);
+			if (r)
+				return r;
+		}
+	}
+
+	for (i = 0; i < dlen; i++, sil_fw_off++) {
+		u32 row, col;
+
+		if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
+			out[i] = 0;
+			continue;
+		}
+		row = sil_fw_off / SIL_FRAME_OUT_W;
+		col = sil_fw_off % SIL_FRAME_OUT_W;
+		if (sil_fw_row != (int)row) {
+			r = mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2,
+				       sil_fw_buf, SIL_FRAME_SRC_W);
+			if (r) {
+				sil_fw_state = SIL_FW_IDLE;
+				return -EIO;
+			}
+			sil_fw_row = row;
+		}
+		out[i] = sil_fw_buf[min_t(u32, col, SIL_FRAME_SRC_W - 1)];
+	}
+	if (sil_fw_off >= SIL_FRAME_OUT_LEN)
+		sil_fw_state = SIL_FW_IDLE;
+	return 0;
+}
+
+/*
+ * One blob transfer (spidev, full duplex) -> mcu_spi_rw calls.
+ * write: tx = [reg, 0xff, val_le32], tx only.
+ * read:  tx = [reg, 0x00, (0x00 if hdr 3)] + zeros, data starts at rx[hdr].
+ * hdr is 2, or 3 (dummy byte) after a page write for non-sequential access.
+ * len 6/7 is a 4 byte register read (hdr = len - 4).
+ */
+static int sil_spi_xfer(struct fp_data *fp, u8 *tx, u8 *rx, u32 len)
+{
+	union fp_spi_ctrl ctrl = sil_spi_ctrl(fp);
+	u32 hdr, hdr_tx, dlen, off, n, chunk;
+	u8 hb[3];
+	int r;
+
+	if (len < 2)
+		return -EINVAL;
+
+	if (tx[1] == 0xff) {
+		if (len > SIL_SPI_MAX_WR)
+			return -EMSGSIZE;
+		if (len >= 6) {
+			u32 val = get_unaligned_le32(tx + 2);
+
+			if (tx[0] == SIL_REG_PAGE) {
+				sil_page = val;
+				sil_fw_state = val ? SIL_FW_IDLE : SIL_FW_ARMED;
+			} else {
+				sil_fw_state = SIL_FW_IDLE;
+				if (tx[0] == SIL_WIN_REG && sil_page == SIL_WIN_PAGE)
+					sil_win = val;
+			}
+		} else {
+			sil_fw_state = SIL_FW_IDLE;
+		}
+		if (tx[0] == 0xf0)
+			sil_first_read = true;
+		return sil_spi_tx(ctrl, tx, len);
+	}
+	if (tx[1] != 0x00)
+		return -EINVAL;
+
+	if (len == 6 || len == 7)
+		hdr = len - 4;
+	else
+		hdr = (sil_first_read && tx[0] < 0x80 && tx[0] != 3) ? 3 : 2;
+	sil_first_read = false;
+	if (len <= hdr)
+		return -EINVAL;
+
+	if (len > 7 && sil_frame_w36 &&
+	    (sil_win & 0xffff) == SIL_WIN_W36) {
+		if (sil_fw_state == SIL_FW_ARMED && tx[0] != 0)
+			sil_fw_state = SIL_FW_IDLE;
+		if (sil_fw_state != SIL_FW_IDLE)
+			return sil_frame_read(ctrl, hdr, len, rx);
+	} else {
+		sil_fw_state = SIL_FW_IDLE;
+	}
+
+	hb[0] = tx[0];
+	hb[1] = 0x00;
+	hb[2] = 0x00;
+	hdr_tx = hdr;
+	if (hdr == 3) {
+		if (!sil_hdr3_prime) {
+			pr_err("%s: tx_len 3 read needs sil_hdr3_prime\n", __func__);
+			return -EINVAL;
+		}
+		r = sil_spi_tx(ctrl, hb, 2);
+		if (r)
+			return r;
+		hdr_tx = 2;
+	}
+
+	chunk = clamp(sil_rd_chunk, 1, 128);
+	dlen = len - hdr;
+	for (off = 0; off < dlen; off += n) {
+		n = min(chunk, dlen - off);
+		r = mcu_spi_rw(SIL_SPI_BUS, ctrl, hb, off ? 2 : hdr_tx,
+			       rx + hdr + off, n);
+		if (r)
+			return -EIO;
+	}
+	return 0;
+}
+
+static long sil_spi_message(struct fp_data *fp, unsigned int cmd,
+			    void __user *argp, bool compat)
+{
+	unsigned int size = _IOC_SIZE(cmd);
+	unsigned int cnt = size / sizeof(struct spi_ioc_transfer);
+	struct spi_ioc_transfer *xf;
+	long total = 0;
+	unsigned int i;
+	int r = 0;
+
+	if (size % sizeof(struct spi_ioc_transfer) || cnt > SIL_SPI_MAX_MSGS)
+		return -EINVAL;
+	if (!cnt)
+		return 0;
+	xf = memdup_user(argp, size);
+	if (IS_ERR(xf))
+		return PTR_ERR(xf);
+
+	for (i = 0; i < cnt; i++) {
+		u32 len = xf[i].len;
+		void __user *utx;
+		void __user *urx;
+		u8 *tx, *rx;
+
+		if (!len)
+			continue;
+		if (len > SIL_SPI_MAX_XFER || !xf[i].tx_buf) {
+			r = -EINVAL;
+			break;
+		}
+		if (compat) {
+			utx = compat_ptr((compat_uptr_t)xf[i].tx_buf);
+			urx = compat_ptr((compat_uptr_t)xf[i].rx_buf);
+		} else {
+			utx = (void __user *)(uintptr_t)xf[i].tx_buf;
+			urx = (void __user *)(uintptr_t)xf[i].rx_buf;
+		}
+		tx = kmalloc(len, GFP_KERNEL);
+		rx = kzalloc(len, GFP_KERNEL);
+		if (!tx || !rx) {
+			r = -ENOMEM;
+		} else if (copy_from_user(tx, utx, len)) {
+			r = -EFAULT;
+		} else {
+			r = sil_spi_xfer(fp, tx, rx, len);
+			if (!r && xf[i].rx_buf && copy_to_user(urx, rx, len))
+				r = -EFAULT;
+		}
+		kfree(tx);
+		kfree(rx);
+		if (r)
+			break;
+		total += len;
+	}
+	kfree(xf);
+	return r ? r : total;
+}
+
+static long sil_spi_ioctl(struct fp_data *fp, unsigned int cmd,
+			  void __user *argp)
+{
+	long ret = 0;
+	u8 v8;
+	u32 v32;
+
+	if (_IOC_NR(cmd) == 0 && _IOC_DIR(cmd) == _IOC_WRITE) {
+		mutex_lock(&sil_lock);
+		ret = sil_spi_message(fp, cmd, argp, in_compat_syscall());
+		mutex_unlock(&sil_lock);
+		return ret;
+	}
+
+	mutex_lock(&sil_lock);
+	switch (cmd) {
+	case SPI_IOC_RD_MODE:
+		ret = put_user(sil_spi_mode, (u8 __user *)argp);
+		break;
+	case SPI_IOC_WR_MODE:
+		ret = get_user(v8, (u8 __user *)argp);
+		if (!ret) {
+			sil_spi_mode = v8;
+			sil_spi_mode32 = v8;
+		}
+		break;
+	case SPI_IOC_RD_LSB_FIRST:
+		ret = put_user(sil_spi_lsb, (u8 __user *)argp);
+		break;
+	case SPI_IOC_WR_LSB_FIRST:
+		ret = get_user(v8, (u8 __user *)argp);
+		if (!ret)
+			sil_spi_lsb = !!v8;
+		break;
+	case SPI_IOC_RD_BITS_PER_WORD:
+		ret = put_user(sil_spi_bits, (u8 __user *)argp);
+		break;
+	case SPI_IOC_WR_BITS_PER_WORD:
+		ret = get_user(v8, (u8 __user *)argp);
+		if (!ret)
+			sil_spi_bits = v8 ? v8 : 8;
+		break;
+	case SPI_IOC_RD_MAX_SPEED_HZ:
+		ret = put_user(sil_spi_speed, (u32 __user *)argp);
+		break;
+	case SPI_IOC_WR_MAX_SPEED_HZ:
+		ret = get_user(v32, (u32 __user *)argp);
+		if (!ret && !v32)
+			ret = -EINVAL;
+		if (!ret)
+			sil_spi_speed = v32;
+		break;
+	case SPI_IOC_RD_MODE32:
+		ret = put_user(sil_spi_mode32, (u32 __user *)argp);
+		break;
+	case SPI_IOC_WR_MODE32:
+		ret = get_user(v32, (u32 __user *)argp);
+		if (!ret) {
+			sil_spi_mode32 = v32;
+			sil_spi_mode = v32 & 0xff;
+		}
+		break;
+	default:
+		ret = -ENOTTY;
+		break;
+	}
+	mutex_unlock(&sil_lock);
+	return ret;
+}
+
+static int sil_hw_step1(struct fp_data *fp, int *cs_req, int *irq_val)
+{
+	int vote_ret = hisi_idle_sleep_vote(ID_IOMCU, 1);
+
+	*cs_req = -1;
+	*irq_val = -1;
+	fingerprint_sensor_poweron(fp, FP_LDO_TYPE_EXTERN);
+	msleep(5);
+	if (gpio_is_valid(fp->cs0_gpio)) {
+		*cs_req = gpio_request(fp->cs0_gpio, "fp_probe_cs");
+		gpio_direction_output(fp->cs0_gpio, 1);
+		if (*cs_req == 0)
+			gpio_free(fp->cs0_gpio);
+	}
+	if (gpio_is_valid(fp->rst_gpio)) {
+		gpio_direction_output(fp->rst_gpio, 0);
+		msleep(5);
+		gpio_direction_output(fp->rst_gpio, 1);
+		msleep(10);
+	}
+	if (gpio_is_valid(fp->irq_gpio))
+		*irq_val = gpio_get_value(fp->irq_gpio);
+	return vote_ret;
+}
+
+static int sil_hw_step2(u32 *clk0, u32 *clk1, u32 *rst0, u32 *rst1)
+{
+	void __iomem *ao_crg = ioremap(0xffd7e000, 0x1000);
+
+	if (!ao_crg)
+		return -ENOMEM;
+	*clk0 = readl(ao_crg + 0x18);
+	*rst0 = readl(ao_crg + 0x28);
+	writel(BIT(30), ao_crg + 0x10);
+	writel(BIT(30), ao_crg + 0x24);
+	udelay(50);
+	*clk1 = readl(ao_crg + 0x18);
+	*rst1 = readl(ao_crg + 0x28);
+	iounmap(ao_crg);
+	return 0;
+}
+
 static DEVICE_ATTR(fingerprint_chip_info, 0440,
 	fingerprint_chip_info_show, NULL);
 static DEVICE_ATTR(ud_fingerprint_chip_info, 0440,
@@ -788,6 +1231,8 @@ static irqreturn_t fingerprint_irq_handler(int irq, void *handle)
 			return IRQ_HANDLED;
 	}
 
+	if (READ_ONCE(sil_inited) && gpio_get_value(fp->irq_gpio))
+		sil_queue_msg(SIL_MSG_IRQ);
 	sysfs_notify(&fp->pf_dev->dev.kobj, NULL,
 		dev_attr_irq.attr.name);
 	return IRQ_HANDLED;
@@ -1293,11 +1738,35 @@ static ssize_t fingerprint_write(struct file *file, const char *buff,
 	return count;
 }
 
-static ssize_t fingerprint_read(struct file *file, char *buff,
+static ssize_t fingerprint_read(struct file *file, char __user *buff,
 	size_t count, loff_t *ppos)
 {
-	hwlog_info("%s\n", __func__);
-	return FP_RETURN_SUCCESS;
+	u8 msg;
+
+	if (!count)
+		return FP_RETURN_SUCCESS;
+	while (!sil_queue_pop(&msg)) {
+		if (!READ_ONCE(sil_inited))
+			return FP_RETURN_SUCCESS;
+		if (file->f_flags & O_NONBLOCK)
+			return -EAGAIN;
+		if (wait_event_interruptible(sil_wq,
+			READ_ONCE(sil_q_cnt) || !READ_ONCE(sil_inited)))
+			return -ERESTARTSYS;
+	}
+	if (copy_to_user(buff, &msg, 1))
+		return -EFAULT;
+	return 1;
+}
+
+static unsigned int fingerprint_poll(struct file *file, poll_table *wait)
+{
+	poll_wait(file, &sil_wq, wait);
+	if (READ_ONCE(sil_q_cnt))
+		return POLLIN | POLLRDNORM;
+	if (!READ_ONCE(sil_inited))
+		return DEFAULT_POLLMASK;
+	return 0;
 }
 
 static int fingerprint_get_irq_status(struct fp_data *fp)
@@ -1716,6 +2185,207 @@ static int fp_ioc_update_te()
 	return FP_RETURN_SUCCESS;
 }
 
+#define SIFP_IOC_MAGIC		's'
+
+struct fp_dev_key_t {
+	s32 key;
+	u32 value;
+};
+
+#define SIL_DEVNAME_LEN		16
+struct fp_dev_conf_t {
+	u8 mode;
+	u8 bits;
+	u16 delay;
+	u32 speed;
+	char dev[SIL_DEVNAME_LEN];
+	u8 nl_id;
+	u8 dev_id;
+	u16 reserve;
+	u32 reg;
+	char ta[SIL_DEVNAME_LEN];
+};
+
+#define SIFP_IOC_RESET		_IOW(SIFP_IOC_MAGIC, 10, u8)
+#define SIFP_IOC_ENABLE_IRQ	_IO(SIFP_IOC_MAGIC, 11)
+#define SIFP_IOC_DISABLE_IRQ	_IO(SIFP_IOC_MAGIC, 12)
+#define SIFP_IOC_WAIT_IRQ	_IOR(SIFP_IOC_MAGIC, 13, u8)
+#define SIFP_IOC_CLR_IRQ	_IO(SIFP_IOC_MAGIC, 14)
+#define SIFP_IOC_KEY_EVENT	_IOW(SIFP_IOC_MAGIC, 15, struct fp_dev_key_t)
+#define SIFP_IOC_INIT		_IOR(SIFP_IOC_MAGIC, 16, struct fp_dev_conf_t)
+#define SIFP_IOC_DEINIT		_IO(SIFP_IOC_MAGIC, 17)
+#define SIFP_IOC_IRQ_STATUS	_IOR(SIFP_IOC_MAGIC, 18, u8)
+#define SIFP_IOC_SCR_STATUS	_IOR(SIFP_IOC_MAGIC, 20, u8)
+#define SIFP_IOC_GET_VER	_IOR(SIFP_IOC_MAGIC, 21, char[10])
+#define SIFP_IOC_SET_KMAP	_IOW(SIFP_IOC_MAGIC, 22, u16[7])
+#define SIFP_IOC_ACQ_SPI	_IO(SIFP_IOC_MAGIC, 23)
+#define SIFP_IOC_RLS_SPI	_IO(SIFP_IOC_MAGIC, 24)
+#define SIFP_IOC_PKG_SIZE	_IOR(SIFP_IOC_MAGIC, 25, u8)
+#define SIFP_IOC_DBG_LEVEL	_IOWR(SIFP_IOC_MAGIC, 26, u8)
+#define SIFP_IOC_WAKELOCK	_IOW(SIFP_IOC_MAGIC, 27, u8)
+#define SIFP_IOC_PWDN		_IOW(SIFP_IOC_MAGIC, 28, u8)
+#define SIFP_IOC_PROC_NODE	_IOW(SIFP_IOC_MAGIC, 29, char[32])
+
+static int sil_do_init(struct fp_data *fp, struct file *file,
+		       void __user *argp)
+{
+	struct fp_dev_conf_t conf;
+	u32 clk0, clk1, rst0, rst1;
+	int cs_req, irq_val, r;
+
+	BUILD_BUG_ON(sizeof(struct fp_dev_conf_t) != 48);
+
+	if (sil_inited && sil_owner != file)
+		return -EBUSY;
+
+	if (!sil_inited) {
+		sil_hw_step1(fp, &cs_req, &irq_val);
+		sil_vote_held = true;
+		r = sil_hw_step2(&clk0, &clk1, &rst0, &rst1);
+		if (r) {
+			hisi_idle_sleep_vote(ID_IOMCU, 0);
+			sil_vote_held = false;
+			return r;
+		}
+		sil_queue_drop(-1);
+		sil_first_read = false;
+		sil_fw_state = SIL_FW_IDLE;
+		sil_page = 0;
+		sil_win = 0;
+		sil_owner = file;
+		WRITE_ONCE(sil_inited, true);
+	}
+
+	memset(&conf, 0, sizeof(conf));
+	conf.bits = 8;
+	conf.delay = 100;
+	conf.speed = 8000000;
+	BUILD_BUG_ON(sizeof("/dev/" FP_DEV_NAME) - 1 != sizeof(conf.dev));
+	memcpy(conf.dev, "/dev/" FP_DEV_NAME, sizeof(conf.dev));
+	if (copy_to_user(argp, &conf, sizeof(conf)))
+		return -EFAULT;
+	return 0;
+}
+
+static void sil_do_deinit(void)
+{
+	if (!sil_inited)
+		return;
+	sil_queue_drop(-1);
+	sil_queue_msg(SIL_MSG_DISCONNECT);
+	WRITE_ONCE(sil_inited, false);
+	sil_owner = NULL;
+	if (sil_vote_held) {
+		hisi_idle_sleep_vote(ID_IOMCU, 0);
+		sil_vote_held = false;
+	}
+}
+
+static long sil_wait_irq(struct file *file, void __user *argp)
+{
+	u8 msg;
+
+	while (!sil_queue_pop(&msg)) {
+		if (file->f_flags & O_NONBLOCK)
+			return -EAGAIN;
+		if (!READ_ONCE(sil_inited))
+			return -ENODEV;
+		if (wait_event_interruptible(sil_wq,
+			READ_ONCE(sil_q_cnt) || !READ_ONCE(sil_inited)))
+			return -ERESTARTSYS;
+	}
+	return put_user(msg, (u8 __user *)argp);
+}
+
+static long sil_ioctl(struct file *file, struct fp_data *fp,
+		      unsigned int cmd, void __user *argp)
+{
+	static const char ver[10] = "0.1.1";
+	long ret = 0;
+	u8 v8;
+
+	if (cmd == SIFP_IOC_WAIT_IRQ)
+		return sil_wait_irq(file, argp);
+
+	mutex_lock(&sil_lock);
+	switch (cmd) {
+	case SIFP_IOC_INIT:
+		ret = sil_do_init(fp, file, argp);
+		break;
+	case SIFP_IOC_DEINIT:
+		sil_do_deinit();
+		break;
+	case SIFP_IOC_RESET:
+		ret = get_user(v8, (u8 __user *)argp);
+		if (ret)
+			break;
+		if (!gpio_is_valid(fp->rst_gpio)) {
+			ret = -ENODEV;
+			break;
+		}
+		if (!v8)
+			v8 = 5;
+		gpio_direction_output(fp->rst_gpio, 0);
+		msleep(v8);
+		gpio_direction_output(fp->rst_gpio, 1);
+		msleep(v8);
+		sil_first_read = false;
+		sil_fw_state = SIL_FW_IDLE;
+		break;
+	case SIFP_IOC_ENABLE_IRQ:
+		sil_queue_drop(SIL_MSG_IRQ);
+		fp_ioc_enable_irq(fp);
+		break;
+	case SIFP_IOC_DISABLE_IRQ:
+		fp_ioc_disable_irq(fp);
+		break;
+	case SIFP_IOC_CLR_IRQ:
+		sil_queue_drop(SIL_MSG_IRQ);
+		break;
+	case SIFP_IOC_IRQ_STATUS:
+		ret = put_user((u8)fingerprint_get_irq_status(fp),
+			       (u8 __user *)argp);
+		break;
+	case SIFP_IOC_SCR_STATUS:
+		ret = put_user((u8)1, (u8 __user *)argp);
+		break;
+	case SIFP_IOC_GET_VER:
+		ret = copy_to_user(argp, ver, sizeof(ver)) ? -EFAULT : 0;
+		break;
+	case SIFP_IOC_PKG_SIZE:
+		ret = put_user((u8)0, (u8 __user *)argp);
+		break;
+	case SIFP_IOC_DBG_LEVEL:
+		ret = get_user(v8, (u8 __user *)argp);
+		if (!ret) {
+			sil_dbg_level = v8;
+			ret = put_user(sil_dbg_level, (u8 __user *)argp);
+		}
+		break;
+	case SIFP_IOC_WAKELOCK:
+		ret = get_user(v8, (u8 __user *)argp);
+		if (ret)
+			break;
+		if (v8)
+			__pm_stay_awake(&fp->ttw_wl);
+		else
+			__pm_relax(&fp->ttw_wl);
+		break;
+	case SIFP_IOC_ACQ_SPI:
+	case SIFP_IOC_RLS_SPI:
+	case SIFP_IOC_PWDN:
+	case SIFP_IOC_SET_KMAP:
+	case SIFP_IOC_PROC_NODE:
+	case SIFP_IOC_KEY_EVENT:
+		break;
+	default:
+		ret = -ENOTTY;
+		break;
+	}
+	mutex_unlock(&sil_lock);
+	return ret;
+}
+
 static long fingerprint_ioctl(struct file *file, unsigned int cmd,
 	unsigned long arg)
 {
@@ -1729,6 +2399,11 @@ static long fingerprint_ioctl(struct file *file, unsigned int cmd,
 		hwlog_err("%s fingerprint is NULL\n", __func__);
 		return -EFAULT;
 	}
+
+	if (_IOC_TYPE(cmd) == SIFP_IOC_MAGIC)
+		return sil_ioctl(file, fp, cmd, argp);
+	if (_IOC_TYPE(cmd) == SPI_IOC_MAGIC)
+		return sil_spi_ioctl(fp, cmd, argp);
 
 	if (_IOC_TYPE(cmd) != FP_IOC_MAGIC)
 		return -ENOTTY;
@@ -1801,9 +2476,21 @@ static long fingerprint_ioctl(struct file *file, unsigned int cmd,
 	return ret;
 }
 
+#ifdef CONFIG_COMPAT
+static long fingerprint_compat_ioctl(struct file *file, unsigned int cmd,
+	unsigned long arg)
+{
+	return fingerprint_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
+}
+#endif
+
 static int fingerprint_release(struct inode *inode, struct file *file)
 {
 	hwlog_info("%s\n", __func__);
+	mutex_lock(&sil_lock);
+	if (file == sil_owner)
+		sil_do_deinit();
+	mutex_unlock(&sil_lock);
 	return FP_RETURN_SUCCESS;
 }
 
@@ -1812,8 +2499,12 @@ static const struct file_operations fingerprint_fops = {
 	.open           = fingerprint_open,
 	.write          = fingerprint_write,
 	.read           = fingerprint_read,
+	.poll           = fingerprint_poll,
 	.release        = fingerprint_release,
 	.unlocked_ioctl = fingerprint_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = fingerprint_compat_ioctl,
+#endif
 };
 
 static int fingerprint_reset_gpio_init(struct fp_data *fp)
