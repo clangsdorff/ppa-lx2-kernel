@@ -21,6 +21,7 @@
 static int lcd_backlight_registered;
 static unsigned int is_recovery_mode;
 static int is_no_fastboot_bl_enable;
+static bool bl_set_by_userspace;
 
 #define MSEC_PER_FRAME  17
 
@@ -137,14 +138,15 @@ static void hisifb_bl_workqueue_handler(struct hisi_fb_data_type *hisifd)
 		if (hisifd->online_play_count < ONLINE_PLAY_LOG_PRINTF) {
 			HISI_FB_INFO("[online_play_count = %d] set bl_updated = 1.\n", hisifd->online_play_count);
 		}
-		if (is_recovery_mode) {
+		if (is_recovery_mode || !bl_set_by_userspace) {
 			/*
 			*fix the bug:recovery interface app can not set backlight successfully
 			*if backlight not be set at recovery,driver will set default value
 			*otherwise driver not set anymore
 			*/
-			if(hisifd->bl_level == 0) {
-				hisifd->bl_level = hisifd->panel_info.bl_default;
+			if (hisifd->bl_level == 0) {
+				hisifd->bl_level = hisifd->panel_info.bl_default ?:
+					(hisifd->panel_info.bl_max / 2 ?: 102);
 			}
 		} else {
 			if (!is_fastboot_display_enable() && !is_no_fastboot_bl_enable) {
@@ -266,6 +268,8 @@ static void hisi_fb_set_bl_brightness(struct led_classdev *led_cdev,
 		/(2 * hisifd->panel_info.bl_max);
 	if (!bl_lvl && value)
 		bl_lvl = 1;
+	if (bl_lvl > 0)
+		bl_set_by_userspace = true;
 	down(&hisifd->brightness_esd_sem);
 	hisifb_set_backlight(hisifd, bl_lvl, false);
 	up(&hisifd->brightness_esd_sem);
