@@ -1809,7 +1809,9 @@ static inline bool is_percpu_thread(void)
 #define PFA_SPREAD_SLAB			2	/* Spread some slab caches over cpuset */
 #define PFA_SPEC_SSB_DISABLE		3	/* Speculative Store Bypass disabled */
 #define PFA_SPEC_SSB_FORCE_DISABLE	4	/* Speculative Store Bypass force disabled*/
-#define PFA_LMK_WAITING  5      /* Lowmemorykiller is waiting */
+#define PFA_SPEC_IB_DISABLE		5	/* Indirect branch speculation restricted */
+#define PFA_SPEC_IB_FORCE_DISABLE	6	/* Indirect branch speculation permanently restricted */
+#define PFA_LMK_WAITING  7      /* Lowmemorykiller is waiting */
 
 #define PFA_SLEEP_ON_THROTL	25
 #define PFA_FLUSHER		26
@@ -1849,6 +1851,13 @@ TASK_PFA_CLEAR(SPEC_SSB_DISABLE, spec_ssb_disable)
 TASK_PFA_TEST(SPEC_SSB_FORCE_DISABLE, spec_ssb_force_disable)
 TASK_PFA_SET(SPEC_SSB_FORCE_DISABLE, spec_ssb_force_disable)
 
+TASK_PFA_TEST(SPEC_IB_DISABLE, spec_ib_disable)
+TASK_PFA_SET(SPEC_IB_DISABLE, spec_ib_disable)
+TASK_PFA_CLEAR(SPEC_IB_DISABLE, spec_ib_disable)
+
+TASK_PFA_TEST(SPEC_IB_FORCE_DISABLE, spec_ib_force_disable)
+TASK_PFA_SET(SPEC_IB_FORCE_DISABLE, spec_ib_force_disable)
+
 TASK_PFA_TEST(SLEEP_ON_THROTL, sleep_on_throtl)
 TASK_PFA_SET(SLEEP_ON_THROTL, sleep_on_throtl)
 TASK_PFA_CLEAR(SLEEP_ON_THROTL, sleep_on_throtl)
@@ -1868,7 +1877,6 @@ TASK_PFA_CLEAR(IN_PAGEFAULT_DELAY_CLEAR, in_pagefault_delay_clear)
 TASK_PFA_TEST(IN_WB_THRD, in_wb_thrd)
 TASK_PFA_SET(IN_WB_THRD, in_wb_thrd)
 TASK_PFA_CLEAR(IN_WB_THRD, in_wb_thrd)
-
 static inline void
 current_restore_flags(unsigned long orig_flags, unsigned long flags)
 {
