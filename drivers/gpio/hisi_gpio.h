@@ -29,6 +29,7 @@ struct pl061 {
 	int		sec_status;
 	void __iomem	*base;
 	struct gpio_chip	gc;
+	struct irq_chip		irq_chip;
 	int                     parent_irq;
 	bool		uses_pinctrl;
 #ifdef CONFIG_PM
