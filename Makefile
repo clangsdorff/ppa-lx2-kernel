@@ -7,7 +7,7 @@ export OBB_PRODUCT_NAME := kirin710
 export TARGET_BOARD_PLATFORM := kirin710
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 78
+SUBLEVEL = 79
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -546,6 +546,8 @@ CLANG_GCC_TC	:= --gcc-toolchain=$(shell perl -e 'use File::Spec; print File::Spe
 endif
 KBUILD_CFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC)
 KBUILD_AFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC)
+KBUILD_CFLAGS += $(call cc-option, -no-integrated-as)
+KBUILD_AFLAGS += $(call cc-option, -no-integrated-as)
 endif
 
 RETPOLINE_CFLAGS_GCC := -mindirect-branch=thunk-extern -mindirect-branch-register
@@ -822,8 +824,6 @@ KBUILD_CFLAGS += -Wno-error=return-type
 # See modpost pattern 2
 KBUILD_CFLAGS += $(call cc-option, -mno-global-merge,)
 KBUILD_CFLAGS += $(call cc-option, -fcatch-undefined-behavior)
-KBUILD_CFLAGS += $(call cc-option, -no-integrated-as)
-KBUILD_AFLAGS += $(call cc-option, -no-integrated-as)
 else
 
 # These warnings generated too much noise in a regular build.
