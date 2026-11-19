@@ -6583,15 +6583,11 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
 			/* It is possible that we process SYN packets from backlog,
 			 * so we need to make sure to disable BH and RCU right there.
 			 */
-#ifdef CONFIG_MPTCP
 			rcu_read_lock();
-#endif
 			local_bh_disable();
 			acceptable = icsk->icsk_af_ops->conn_request(sk, skb) >= 0;
 			local_bh_enable();
-#ifdef CONFIG_MPTCP
 			rcu_read_unlock();
-#endif
 
 			if (!acceptable)
 				return 1;
