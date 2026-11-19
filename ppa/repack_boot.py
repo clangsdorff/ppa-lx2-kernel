@@ -3,6 +3,7 @@
 
 usage: repack_boot.py <stock_boot.img> <Image.gz> <out.img>
 """
+import gzip
 import struct
 import sys
 
@@ -15,6 +16,8 @@ def pad(n, ps):
 
 def main(stock, kernel, out):
     d = open(stock, 'rb').read()
+    if d[:2] == b'\x1f\x8b':
+        d = gzip.decompress(d)
     k = open(kernel, 'rb').read()
     assert d[:8] == b'ANDROID!'
     ks, ka, rs, ra, ss, sa, ta, ps, hv, osv = struct.unpack('<10I', d[8:48])
