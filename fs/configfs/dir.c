@@ -1850,6 +1850,16 @@ void configfs_unregister_group(struct config_group *group)
 	frag->frag_dead = true;
 	up_write(&frag->frag_sem);
 
+	mutex_lock(&subsys->su_mutex);
+	if (!group->cg_item.ci_parent->ci_group) {
+		/*
+		 * The parent has already been unlinked and detached
+		 * due to a rmdir.
+		 */
+		goto unlink_group;
+	}
+	mutex_unlock(&subsys->su_mutex);
+
 	inode_lock_nested(d_inode(parent), I_MUTEX_PARENT);
 	spin_lock(&configfs_dirent_lock);
 	configfs_detach_prep(dentry, NULL);
@@ -1864,6 +1874,7 @@ void configfs_unregister_group(struct config_group *group)
 	dput(dentry);
 
 	mutex_lock(&subsys->su_mutex);
+unlink_group:
 	unlink_group(group);
 	mutex_unlock(&subsys->su_mutex);
 }
