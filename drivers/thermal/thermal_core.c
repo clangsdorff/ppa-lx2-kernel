@@ -620,12 +620,10 @@ static void update_temperature(struct thermal_zone_device *tz)
 			tz->last_temperature, tz->temperature);
 }
 
-static void thermal_zone_device_reset(struct thermal_zone_device *tz)
+static void thermal_zone_device_init(struct thermal_zone_device *tz)
 {
 	struct thermal_instance *pos;
-
 	tz->temperature = THERMAL_TEMP_INVALID;
-	tz->passive = 0;
 	list_for_each_entry(pos, &tz->thermal_instances, tz_node)
 		pos->initialized = false;
 }
@@ -691,6 +689,12 @@ void update_actor_weights(struct thermal_zone_device *tz)
 }
 EXPORT_SYMBOL_GPL(update_actor_weights);
 #endif
+
+static void thermal_zone_device_reset(struct thermal_zone_device *tz)
+{
+	tz->passive = 0;
+	thermal_zone_device_init(tz);
+}
 
 void thermal_zone_device_update(struct thermal_zone_device *tz,
 				enum thermal_notify_event event)
@@ -1887,11 +1891,11 @@ static int thermal_pm_notify(struct notifier_block *nb,
 		list_for_each_entry(tz, &thermal_tz_list, node) {
 #ifdef CONFIG_HISI_IPA_THERMAL
 			if (strncmp(tz->governor->name, USER_SPACE_GOVERNOR, strlen(USER_SPACE_GOVERNOR))) { /*[false alarm]*/
-				thermal_zone_device_reset(tz);
+				thermal_zone_device_init(tz);
 				thermal_zone_device_update(tz, THERMAL_EVENT_UNSPECIFIED);
 			}
 #else
-			thermal_zone_device_reset(tz);
+			thermal_zone_device_init(tz);
 			thermal_zone_device_update(tz,
 						   THERMAL_EVENT_UNSPECIFIED);
 #endif

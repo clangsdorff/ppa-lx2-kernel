@@ -85,6 +85,7 @@ static int load_script(struct linux_binprm *bprm)
 	}
 	/* NUL-terminate the buffer and any trailing spaces/tabs. */
 	*cp = '\0';
+
 	while (cp > bprm->buf) {
 		cp--;
 		if ((*cp == ' ') || (*cp == '\t'))
