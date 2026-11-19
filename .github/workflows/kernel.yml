@@ -1,0 +1,129 @@
+name: PPA-LX2 Kernel Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      lto:
+        description: 'Enable Clang LTO'
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex ccache cpio lz4 libelf-dev libssl-dev python-is-python3
+
+      - name: Cache toolchains
+        id: tc-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/ppa-tc
+          key: ppa-tc-r353983c-gcc49-v1
+
+      - name: Download toolchains
+        if: steps.tc-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/ppa-tc/clang-r353983c" "$HOME/ppa-tc/aarch64-linux-android-4.9"
+          curl -sSfL --retry 5 \
+            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-10.0.0_r41/clang-r353983c.tar.gz" \
+            | tar -xz -C "$HOME/ppa-tc/clang-r353983c"
+          curl -sSfL --retry 5 \
+            "https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-10.0.0_r41.tar.gz" \
+            | tar -xz -C "$HOME/ppa-tc/aarch64-linux-android-4.9"
+
+      - name: Cache ccache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-lto-${{ inputs.lto }}-${{ github.sha }}
+          restore-keys: |
+            ccache-lto-${{ inputs.lto }}-
+
+      - name: Build kernel
+        env:
+          LTO: ${{ inputs.lto }}
+        run: |
+          set -euo pipefail
+          TC="$HOME/ppa-tc"
+          OUT="$PWD/out"
+          export PATH="$TC/aarch64-linux-android-4.9/bin:$TC/clang-r353983c/bin:$PATH"
+          export CCACHE_DIR="$HOME/.cache/ccache"
+          export CCACHE_COMPILERCHECK="string:clang-r353983c"
+          export CCACHE_BASEDIR="$PWD"
+          export CCACHE_NOHASHDIR=1
+          export CCACHE_COMPRESS=1
+          export CCACHE_MAXSIZE=2G
+
+          "$TC/clang-r353983c/bin/clang" --version | head -n 1
+          "$TC/aarch64-linux-android-4.9/bin/aarch64-linux-android-ld.gold" --version | head -n 1
+
+          MAKE_ARGS=(
+            "O=$OUT"
+            "ARCH=arm64"
+            "CROSS_COMPILE=$TC/aarch64-linux-android-4.9/bin/aarch64-linux-android-"
+            "CLANG_TRIPLE=aarch64-linux-gnu-"
+            "CLANG_PREBUILTS_PATH=$TC/clang-r353983c/"
+            "CCACHE=/usr/bin/ccache"
+          )
+
+          mkdir -p "$OUT"
+          make "${MAKE_ARGS[@]}" ppa_lx2_defconfig
+
+          if [ "$LTO" = "true" ]; then
+            ./scripts/config --file "$OUT/.config" \
+              -d LTO_NONE \
+              -e LTO_CLANG \
+              -d CFI_CLANG \
+              -d CFI_PERMISSIVE \
+              -d CFI_CLANG_SHADOW
+          else
+            ./scripts/config --file "$OUT/.config" \
+              -e LTO_NONE \
+              -d LTO_CLANG \
+              -d CFI_CLANG \
+              -d CFI_PERMISSIVE \
+              -d CFI_CLANG_SHADOW
+          fi
+          make "${MAKE_ARGS[@]}" olddefconfig
+
+          if [ "$LTO" = "true" ]; then
+            grep -q '^CONFIG_LTO_CLANG=y$' "$OUT/.config"
+            ! grep -q '^CONFIG_CFI_CLANG=y$' "$OUT/.config"
+          else
+            grep -q '^CONFIG_LTO_NONE=y$' "$OUT/.config"
+            ! grep -q '^CONFIG_LTO_CLANG=y$' "$OUT/.config"
+          fi
+
+          ccache -z
+          make "${MAKE_ARGS[@]}" -j"$(nproc)"
+          ccache -s
+          ls -lh "$OUT/arch/arm64/boot/Image.gz"
+
+      - name: Repack boot image
+        env:
+          LTO: ${{ inputs.lto }}
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse --short HEAD)"
+          LTO_TAG="$( [ "$LTO" = "true" ] && echo lto || echo nolto )"
+          mkdir -p dist
+          python3 -I ppa/repack_boot.py ppa/boot_176_base.img.gz out/arch/arm64/boot/Image.gz dist/boot_ksu_176.img
+          cp out/arch/arm64/boot/Image.gz dist/Image.gz
+          cp out/.config dist/config
+          ls -lh dist/
+          echo "ARTIFACT_NAME=ppa-lx2-kernel-${SHA}-${LTO_TAG}" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist/
