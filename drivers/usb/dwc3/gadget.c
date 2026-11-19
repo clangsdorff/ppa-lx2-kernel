@@ -3609,6 +3609,8 @@ int dwc3_gadget_init(struct dwc3 *dwc)
 		goto err5;
 	}
 
+	dwc3_gadget_set_speed(&dwc->gadget, dwc->maximum_speed);
+
 	return 0;
 
 err5:
