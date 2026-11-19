@@ -27,6 +27,7 @@
 #include <linux/uio.h>
 #include <chipset_common/security/kshield.h>
 #include <linux/uaccess.h>
+#include <keys/request_key_auth-type.h>
 #include "internal.h"
 
 #define KEY_MAX_DESC_SIZE 4096
