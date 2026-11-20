@@ -152,8 +152,8 @@ static int fill_inline_data(struct inode *inode, void *data,
 		m_pofs += vi->inode_isize + vi->xattr_isize;
 
 		/* inline symlink data shouldn't across page boundary as well */
+		/* new mkfs.erofs may cross the page here; page_get_link handles it */
 		if (unlikely(m_pofs + inode->i_size > PAGE_SIZE)) {
-			DBG_BUGON(1);
 			kfree(lnk);
 			return -EIO;
 		}
