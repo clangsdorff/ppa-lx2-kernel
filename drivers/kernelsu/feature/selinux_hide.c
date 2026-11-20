@@ -518,7 +518,7 @@ hook_classic:
 #endif // ARM64 && KALLSYMS
 
 // init kthread
-static int ksu_selinux_hide_init_thread(void *data)
+static int __maybe_unused ksu_selinux_hide_init_thread(void *data)
 {
 	set_user_nice(current, 19); // low prio
 
@@ -605,7 +605,8 @@ void __init ksu_selinux_hide_init()
 	ksu_selinux_hide_alloc_hazptr_slot();
 
 	// we init this on a kthread
-	kthread_run(ksu_selinux_hide_init_thread, NULL, "kthread");
+	// init thread disabled: security_context_to_sid_core lockup on enjoy
+	// kthread_run(ksu_selinux_hide_init_thread, NULL, "kthread");
 
 	if (ksu_register_feature_handler(&selinux_hide_handler)) {
 		pr_err("Failed to register selinux_hide feature handler\n");
