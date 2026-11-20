@@ -134,13 +134,8 @@ static void bfm_check_boot_time(struct bfm_boot_timer_info *boot_timer_info)
 		boot_timer_info->boot_timer_count_task_should_run = false;
 		mutex_unlock(&s_boot_timer_mutex);
 
-		if (bfmr_is_dir_existed(BFMR_VENDOR_HUAWEI_FLAG)) {
-			bfm_send_signal_to_init();
-			boot_fail_err(KERNEL_BOOT_TIMEOUT,
-					NO_SUGGESTION, NULL);
-		} else {
-			bfmr_set_boot_stage(STAGE_BOOT_SUCCESS);
-		}
+		/* ported frameworks without libhwbfm_jni never report boot stages */
+		bfmr_set_boot_stage(STAGE_BOOT_SUCCESS);
 	}
 
 	list_for_each_entry(atimer, &action_timer_active_list, act_list) {
