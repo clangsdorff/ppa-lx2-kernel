@@ -1756,7 +1756,7 @@ int mmc_set_uhs_voltage(struct mmc_host *host, u32 ocr)
 			printk(KERN_ERR "%s:send cmd11 fail,err=%d\n",
 			       mmc_hostname(host), err);
 		}
-		return -EAGAIN;
+		goto power_cycle;
 	}
 
 	if (!mmc_host_is_spi(host) && (cmd.resp[0] & R1_ERROR))
