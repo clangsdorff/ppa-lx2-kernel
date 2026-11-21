@@ -845,7 +845,6 @@ int f2fs_fill_dentries(struct dir_context *ctx, struct f2fs_dentry_ptr *d,
 			err = -EINVAL;
 			goto out;
 		}
-
 		if (f2fs_encrypted_inode(d->inode)) {
 			int save_len = fstr->len;
 
