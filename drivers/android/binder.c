@@ -7223,6 +7223,7 @@ err_alloc_device_names_failed:
 #ifdef CONFIG_TRACING
 	tracefs_remove_recursive(binder_tracefs_dir_entry_root);
 #endif
+	binder_alloc_shrinker_exit();
 
 	return ret;
 }
