@@ -136,4 +136,27 @@ config GENERIC_IRQ_DEBUGFS
 
 	  If you don't know what to do here, say N.
 
+config IRQ_SBALANCE
+	bool "SBalance simple IRQ balancer"
+	depends on SMP
+	default n
+	help
+	  Simple in-kernel IRQ balancer that distributes high-rate interrupts
+	  across eligible online CPUs.
+
+config IRQ_SBALANCE_POLL_MSEC
+	int "SBalance polling interval in milliseconds"
+	depends on IRQ_SBALANCE
+	default 3000
+
+config IRQ_SBALANCE_THRESH
+	int "SBalance interrupt threshold per polling interval"
+	depends on IRQ_SBALANCE
+	default 1024
+
+config IRQ_SBALANCE_EXCLUDE_CPUS
+	string "CPUs to exclude from SBalance"
+	depends on IRQ_SBALANCE
+	default ""
+
 endmenu
