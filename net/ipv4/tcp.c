@@ -1068,7 +1068,6 @@ static void tcp_remove_empty_skb(struct sock *sk, struct sk_buff *skb)
 		sk_wmem_free_skb(sk, skb);
 	}
 }
-
 ssize_t do_tcp_sendpages(struct sock *sk, struct page *page, int offset,
 			 size_t size, int flags)
 {
