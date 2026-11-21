@@ -59,6 +59,9 @@
 #include "securec.h"
 #include <adrv.h>
 #include <bsp_print.h>
+#include <bsp_reset.h>
+#include <bsp_dump.h>
+#include "mdrv_errno.h"
 
 
 
@@ -988,6 +991,20 @@ static void hisi_sim_hpd_msg_to_ccore(struct hisi_sim_hotplug_info *info)
     }
 }
 
+/* cp ignores SIM_CARD_IN while running; a cp reset makes it rescan the tray */
+static void sim_insert_cp_reset_func(struct work_struct *work)
+{
+    if (!bsp_reset_is_connect_ril())
+    {
+        LOGE("cp reset not connected to ril, skip sim insert reset.\n");
+        return;
+    }
+    LOGI("sim inserted, reset cp to rescan card.\n");
+    system_error(DRV_ERRNO_RESET_SIM_SWITCH, 0, 0, NULL, 0);
+}
+
+static DECLARE_DELAYED_WORK(sim_insert_cp_reset_work, sim_insert_cp_reset_func);
+
 static void det_irq_set_sim_insert(struct hisi_sim_hotplug_info *info)
 {
     info->sim_pluged = SIM_CARD_IN;
@@ -997,6 +1014,10 @@ static void det_irq_set_sim_insert(struct hisi_sim_hotplug_info *info)
     update_sim_hotplug_count(info->sim_id, info->sim_pluged);
     sim_set_active(info);
     hisi_sim_det_msg_to_ccore(info, SIM_CARD_IN);
+    if (1 == info->send_msg_to_cp)
+    {
+        mod_delayed_work(system_wq, &sim_insert_cp_reset_work, msecs_to_jiffies(3000));
+    }
 }
 
 static void det_irq_set_sim_remove(struct hisi_sim_hotplug_info *info)
@@ -1008,6 +1029,7 @@ static void det_irq_set_sim_remove(struct hisi_sim_hotplug_info *info)
     update_sim_hotplug_count(info->sim_id, info->sim_pluged);
     sim_set_inactive(info);
     hisi_sim_det_msg_to_ccore(info, SIM_CARD_OUT);
+    cancel_delayed_work(&sim_insert_cp_reset_work);
 }
 
 static void sim_manage_sim_state(int det_gpio_level, struct hisi_sim_hotplug_info *info)
