@@ -264,7 +264,6 @@ CFLAGS_ubsan.o := $(call cc-option, -fno-stack-protector) $(DISABLE_STACKLEAK_PL
 obj-$(CONFIG_SBITMAP) += sbitmap.o
 
 obj-$(CONFIG_PARMAN) += parman.o
-
 obj-$(CONFIG_HISI_SECUREC) += libc_sec/securec_v2/src/vsprintf_s.o \
 			      libc_sec/securec_v2/src/snprintf_s.o \
 			      libc_sec/securec_v2/src/memmove_s.o \
@@ -282,3 +281,5 @@ obj-$(CONFIG_HISI_SECUREC) += libc_sec/securec_v2/src/vsprintf_s.o \
 			      libc_sec/securec_v2/src/sscanf_s.o \
 			      libc_sec/securec_v2/src/vsscanf_s.o \
 			      libc_sec/securec_v2/src/secureinput_a.o
+
+obj-y += crypto/
