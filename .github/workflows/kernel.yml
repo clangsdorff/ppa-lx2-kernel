@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       lto:
-        description: 'Enable Clang LTO'
-        type: boolean
-        default: false
+        description: 'Clang LTO mode'
+        type: choice
+        options:
+          - none
+          - thin
+          - full
+        default: none
 
 jobs:
   build:
@@ -30,15 +34,15 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/ppa-tc
-          key: ppa-tc-r353983c-gcc49-v1
+          key: ppa-tc-r450784d-gcc49-v1
 
       - name: Download toolchains
         if: steps.tc-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p "$HOME/ppa-tc/clang-r353983c" "$HOME/ppa-tc/aarch64-linux-android-4.9"
+          mkdir -p "$HOME/ppa-tc/clang-r450784d" "$HOME/ppa-tc/aarch64-linux-android-4.9"
           curl -sSfL --retry 5 \
-            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-10.0.0_r41/clang-r353983c.tar.gz" \
-            | tar -xz -C "$HOME/ppa-tc/clang-r353983c"
+            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-13.0.0_r1/clang-r450784d.tar.gz" \
+            | tar -xz -C "$HOME/ppa-tc/clang-r450784d"
           curl -sSfL --retry 5 \
             "https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-10.0.0_r41.tar.gz" \
             | tar -xz -C "$HOME/ppa-tc/aarch64-linux-android-4.9"
@@ -59,33 +63,48 @@ jobs:
           set -euo pipefail
           TC="$HOME/ppa-tc"
           OUT="$PWD/out"
-          export PATH="$TC/aarch64-linux-android-4.9/bin:$TC/clang-r353983c/bin:$PATH"
+          export PATH="$TC/aarch64-linux-android-4.9/bin:$TC/clang-r450784d/bin:$PATH"
           export CCACHE_DIR="$HOME/.cache/ccache"
-          export CCACHE_COMPILERCHECK="string:clang-r353983c"
+          export CCACHE_COMPILERCHECK="string:clang-r450784d"
           export CCACHE_BASEDIR="$PWD"
           export CCACHE_NOHASHDIR=1
           export CCACHE_COMPRESS=1
           export CCACHE_MAXSIZE=2G
 
-          "$TC/clang-r353983c/bin/clang" --version | head -n 1
-          "$TC/aarch64-linux-android-4.9/bin/aarch64-linux-android-ld.gold" --version | head -n 1
+          "$TC/clang-r450784d/bin/clang" --version | head -n 1
+          "$TC/clang-r450784d/bin/ld.lld" --version | head -n 1
 
           MAKE_ARGS=(
             "O=$OUT"
             "ARCH=arm64"
             "CROSS_COMPILE=$TC/aarch64-linux-android-4.9/bin/aarch64-linux-android-"
             "CLANG_TRIPLE=aarch64-linux-gnu-"
-            "CLANG_PREBUILTS_PATH=$TC/clang-r353983c/"
+            "CLANG_PREBUILTS_PATH=$TC/clang-r450784d/"
+            "LD=$TC/clang-r450784d/bin/ld.lld"
+            "AR=$TC/clang-r450784d/bin/llvm-ar"
+            "NM=$TC/clang-r450784d/bin/llvm-nm"
+            "OBJCOPY=$TC/clang-r450784d/bin/llvm-objcopy"
+            "OBJDUMP=$TC/clang-r450784d/bin/llvm-objdump"
+            "STRIP=$TC/clang-r450784d/bin/llvm-strip"
             "CCACHE=/usr/bin/ccache"
           )
 
           mkdir -p "$OUT"
           make "${MAKE_ARGS[@]}" ppa_lx2_defconfig
 
-          if [ "$LTO" = "true" ]; then
+          if [ "$LTO" = "thin" ]; then
             ./scripts/config --file "$OUT/.config" \
               -d LTO_NONE \
               -e LTO_CLANG \
+              -e THINLTO \
+              -d CFI_CLANG \
+              -d CFI_PERMISSIVE \
+              -d CFI_CLANG_SHADOW
+          elif [ "$LTO" = "full" ]; then
+            ./scripts/config --file "$OUT/.config" \
+              -d LTO_NONE \
+              -e LTO_CLANG \
+              -d THINLTO \
               -d CFI_CLANG \
               -d CFI_PERMISSIVE \
               -d CFI_CLANG_SHADOW
@@ -93,14 +112,20 @@ jobs:
             ./scripts/config --file "$OUT/.config" \
               -e LTO_NONE \
               -d LTO_CLANG \
+              -d THINLTO \
               -d CFI_CLANG \
               -d CFI_PERMISSIVE \
               -d CFI_CLANG_SHADOW
           fi
           make "${MAKE_ARGS[@]}" olddefconfig
 
-          if [ "$LTO" = "true" ]; then
+          if [ "$LTO" = "thin" ]; then
             grep -q '^CONFIG_LTO_CLANG=y$' "$OUT/.config"
+            grep -q '^CONFIG_THINLTO=y$' "$OUT/.config"
+            ! grep -q '^CONFIG_CFI_CLANG=y$' "$OUT/.config"
+          elif [ "$LTO" = "full" ]; then
+            grep -q '^CONFIG_LTO_CLANG=y$' "$OUT/.config"
+            ! grep -q '^CONFIG_THINLTO=y$' "$OUT/.config"
             ! grep -q '^CONFIG_CFI_CLANG=y$' "$OUT/.config"
           else
             grep -q '^CONFIG_LTO_NONE=y$' "$OUT/.config"
@@ -138,7 +163,11 @@ jobs:
         run: |
           set -euo pipefail
           SHA="$(git rev-parse --short HEAD)"
-          LTO_TAG="$( [ "$LTO" = "true" ] && echo lto || echo nolto )"
+          case "$LTO" in
+            thin) LTO_TAG="thin" ;;
+            full) LTO_TAG="full" ;;
+            *) LTO_TAG="nolto" ;;
+          esac
           mkdir -p dist
           python3 -I ppa/repack_boot.py ppa/boot_176_base.img.gz out/arch/arm64/boot/Image.gz dist/boot_ksu_176.img
           cp out/arch/arm64/boot/Image.gz dist/Image.gz
