@@ -7,7 +7,7 @@ export OBB_PRODUCT_NAME := kirin710
 export TARGET_BOARD_PLATFORM := kirin710
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 221
+SUBLEVEL = 222
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -859,6 +859,13 @@ endif
 ifdef CONFIG_FUNCTION_TRACER
 ifndef CC_FLAGS_FTRACE
 CC_FLAGS_FTRACE := -pg
+endif
+ifdef CONFIG_FTRACE_MCOUNT_RECORD
+  # gcc 5 supports generating the mcount tables directly
+  ifeq ($(call cc-option-yn,-mrecord-mcount),y)
+    CC_FLAGS_FTRACE	+= -mrecord-mcount
+    export CC_USING_RECORD_MCOUNT := 1
+  endif
 endif
 export CC_FLAGS_FTRACE
 ifdef CONFIG_HAVE_FENTRY
