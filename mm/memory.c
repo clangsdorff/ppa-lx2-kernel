@@ -2597,10 +2597,13 @@ static void change_pmd_range(pud_t *pud, phys_addr_t phys,
 		old_pmd = *pmd;
 
 		if (((addr | next | phys) & ~SECTION_MASK) == 0 &&
-		    !pmd_table(old_pmd))
+		    !pmd_table(old_pmd)) {
+			pmd_clear(pmd);
+			flush_tlb_kernel_range(addr, next);
 			pmd_set_huge(pmd, phys, prot);
-		else
+		} else {
 			change_pte_range(pmd, phys, addr, next, prot);
+		}
 
 		phys += next - addr;
 	} while (pmd++, addr = next, addr != end);
@@ -2619,10 +2622,13 @@ static void change_pud_range(pgd_t *pgd, phys_addr_t phys,
 
 	do {
 		next = pud_addr_end(addr, end);
-		if (((addr | next | phys) & ~PUD_MASK) == 0 && pud_sect(*pud))
+		if (((addr | next | phys) & ~PUD_MASK) == 0 && pud_sect(*pud)) {
+			pud_clear(pud);
+			flush_tlb_kernel_range(addr, next);
 			pud_set_huge(pud, phys, prot);
-		else
+		} else {
 			change_pmd_range(pud, phys, addr, next, prot);
+		}
 
 		phys += next - addr;
 	} while (pud++, addr = next, addr != end);
