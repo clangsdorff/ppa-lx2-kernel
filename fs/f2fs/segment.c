@@ -5610,7 +5610,7 @@ static int sanity_check_curseg(struct f2fs_sb_info *sbi)
 	 * In LFS/SSR curseg, .next_blkoff should point to an unused blkaddr;
 	 * In LFS curseg, all blkaddr after .next_blkoff should be unused.
 	 */
-	for (i = 0; i < NO_CHECK_TYPE; i++) {
+	for (i = 0; i < NR_CURSEG_TYPE; i++) {
 		struct curseg_info *curseg = CURSEG_I(sbi, i);
 		struct seg_entry *se = get_seg_entry(sbi, curseg->segno);
 		unsigned int blkofs = curseg->next_blkoff;
