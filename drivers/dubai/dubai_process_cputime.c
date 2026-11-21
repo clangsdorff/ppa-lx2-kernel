@@ -224,7 +224,6 @@ static bool dubai_task_alive(struct task_struct *task)
 
 	if (unlikely(task == NULL)
 		|| (task->flags & PF_EXITING)
-		|| (task->flags & PF_EXITPIDONE)
 		|| (task->flags & PF_SIGNALED))
 		return false;
 
