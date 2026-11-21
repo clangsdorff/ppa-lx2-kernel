@@ -369,7 +369,6 @@ int ufshcd_pltfrm_probe(struct platform_device *pdev)
 		if (timer_irq < 0)
 			dev_err(dev, "UFS timer interrupt is not available!\n");
 	}
-
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_irq_safe(&pdev->dev);
 	pm_suspend_ignore_children(&pdev->dev, true);
