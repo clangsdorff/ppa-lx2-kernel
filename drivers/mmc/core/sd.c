@@ -884,11 +884,14 @@ try_again:
 		printk(KERN_ERR "%s:send acmd41 with ocr:0x%x\n",mmc_hostname(host),ocr);
 
 	/*
-	 * In case CCS and S18A in the response is set, start Signal Voltage
-	 * Switch procedure. SPI mode doesn't support CMD11.
+	 * In case the S18A bit is set in the response, let's start the signal
+	 * voltage switch procedure. SPI mode doesn't support CMD11.
+	 * Note that, according to the spec, the S18A bit is not valid unless
+	 * the CCS bit is set as well. We deliberately deviate from the spec in
+	 * regards to this, which allows UHS-I to be supported for SDSC cards.
 	 */
 	if (!mmc_host_is_spi(host) && rocr &&
-	   ((*rocr & 0x41000000) == 0x41000000) && retries != 0) {
+	   (*rocr & 0x01000000) && retries != 0) {
 	   printk(KERN_ERR "%s:support uhs-1,and accept 1.8V switching request\n",mmc_hostname(host));
 		err = mmc_set_uhs_voltage(host, pocr);
 		if (err == -EAGAIN) {
