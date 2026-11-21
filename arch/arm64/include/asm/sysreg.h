@@ -383,6 +383,8 @@
 #endif
 
 /* id_aa64isar0 */
+#define ID_AA64ISAR0_TS_SHIFT		52
+#define ID_AA64ISAR0_FHM_SHIFT		48
 #define ID_AA64ISAR0_DP_SHIFT		44
 #define ID_AA64ISAR0_SM4_SHIFT		40
 #define ID_AA64ISAR0_SM3_SHIFT		36
@@ -403,6 +405,7 @@
 /* id_aa64pfr0 */
 #define ID_AA64PFR0_CSV3_SHIFT		60
 #define ID_AA64PFR0_CSV2_SHIFT		56
+#define ID_AA64PFR0_DIT_SHIFT		48
 #define ID_AA64PFR0_GIC_SHIFT		24
 #define ID_AA64PFR0_ASIMD_SHIFT		20
 #define ID_AA64PFR0_FP_SHIFT		16
@@ -455,6 +458,7 @@
 #define ID_AA64MMFR1_VMIDBITS_16	2
 
 /* id_aa64mmfr2 */
+#define ID_AA64MMFR2_AT_SHIFT		32
 #define ID_AA64MMFR2_LVA_SHIFT		16
 #define ID_AA64MMFR2_IESB_SHIFT		12
 #define ID_AA64MMFR2_LSM_SHIFT		8
@@ -539,6 +543,7 @@
 
 #else
 
+#include <linux/build_bug.h>
 #include <linux/types.h>
 
 #define __DEFINE_MRS_MSR_S_REGNUM				\
@@ -620,6 +625,16 @@
 	if (__scs_new != __scs_val)					\
 		write_sysreg(__scs_new, sysreg);			\
 } while (0)
+
+static inline void config_sctlr_el1(u32 clear, u32 set)
+{
+	u32 val;
+
+	val = read_sysreg(sctlr_el1);
+	val &= ~clear;
+	val |= set;
+	write_sysreg(val, sctlr_el1);
+}
 
 #endif
 
