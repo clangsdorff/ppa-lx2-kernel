@@ -265,7 +265,7 @@ void bfgx_uart_baud_change_work(struct work_struct *work)
     bfgx_uart_state_set(UART_BPS_CHG_SEND_ACK);
     spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
 
-    /* ÇĞ²¨ÌØÂÊÊ±£¬´ËÏûÏ¢ÊÇhost·¢ËÍµÄ×îºóÒ»¸öUARTÊı¾İ */
+    /* åˆ‡æ³¢ç‰¹ç‡æ—¶ï¼Œæ­¤æ¶ˆæ¯æ˜¯hostå‘é€çš„æœ€åä¸€ä¸ªUARTæ•°æ® */
     ps_tx_urgent_cmd(ps_core_d, SYS_MSG, PL_BAUT_CHG_REQ_ACK);
 
     while (pm_data->uart_state != UART_BPS_CHG_IN_PROGRESS) {
@@ -286,7 +286,7 @@ void bfgx_uart_baud_change_work(struct work_struct *work)
         PS_PRINT_ERR("It is bad!!!, change uart rate fail\n");
     }
 
-    /* µÈ´ıdeviceÍê³ÉÇĞ»»£¬pull down GPIO */
+    /* ç­‰å¾…deviceå®Œæˆåˆ‡æ¢ï¼Œpull down GPIO */
     while (board_get_bwkup_gpio_val() == 1) {
         oal_udelay(200);
         wait_cnt++;
@@ -300,7 +300,7 @@ void bfgx_uart_baud_change_work(struct work_struct *work)
     bfgx_uart_state_set(UART_BPS_CHG_SEND_COMPLETE);
     spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
 
-    /* ÇĞ²¨ÌØÂÊÍê³ÉºóµÄµÚÒ»¸öÎÕÊÖÏûÏ¢ */
+    /* åˆ‡æ³¢ç‰¹ç‡å®Œæˆåçš„ç¬¬ä¸€ä¸ªæ¡æ‰‹æ¶ˆæ¯ */
     ps_tx_urgent_cmd(ps_core_d, SYS_MSG, PL_BAUT_CHG_COMPLETE);
 
     mod_timer(&pm_data->baud_change_timer, jiffies + msecs_to_jiffies(100));
@@ -527,7 +527,7 @@ void bfg_wake_unlock(void)
 void ssi_dump_for_host_wkup_dev_work_only(unsigned long long module_set)
 {
     if (hi11xx_get_os_build_variant() == HI1XX_OS_BUILD_VARIANT_USER) {
-        if (!oal_print_rate_limit(PRINT_RATE_MINUTE)) { /* 1·ÖÖÓ´òÓ¡Ò»´Î */
+        if (!oal_print_rate_limit(PRINT_RATE_MINUTE)) { /* 1åˆ†é’Ÿæ‰“å°ä¸€æ¬¡ */
             module_set = 0x0;
         }
     }
@@ -657,7 +657,7 @@ void host_wkup_dev_work(struct work_struct *work)
         if (waitqueue_active(&pm_data->host_wkup_dev_comp.wait)) {
             PS_PRINT_INFO("it seems like dev ack with NoSleep\n");
             complete_all(&pm_data->host_wkup_dev_comp);
-        } else { /* Ä¿Ç°ÓÃÁËÒ»°Ñhost_mutex´óËø£¬ÕâÖÖcase²»Ó¦´æÔÚ£¬µ«µÍ¹¦ºÄÄ£¿é²»Ó¦ÒÀÀµÍâ²¿ */
+        } else { /* ç›®å‰ç”¨äº†ä¸€æŠŠhost_mutexå¤§é”ï¼Œè¿™ç§caseä¸åº”å­˜åœ¨ï¼Œä½†ä½åŠŸè€—æ¨¡å—ä¸åº”ä¾èµ–å¤–éƒ¨ */
             PS_PRINT_DBG("B do wkup_dev work item after A do it but not finished\n");
         }
         return;
@@ -696,8 +696,8 @@ void host_wkup_dev_work(struct work_struct *work)
 }
 
 #ifdef CONFIG_INPUTHUB
-/* ÷è÷ëÄÚºËº¯Êı£¬ÏÈÓÃÄÚºË°æ±¾ºê¸ô¿ª */
-/* sensorbubÄ£¿éµÄº¯Êı£¬Ë¯Ãß»½ĞÑÊ±ÓÃÀ´²éÑ¯sensorhubµÄ×´Ì¬ */
+/* éº’éºŸå†…æ ¸å‡½æ•°ï¼Œå…ˆç”¨å†…æ ¸ç‰ˆæœ¬å®éš”å¼€ */
+/* sensorbubæ¨¡å—çš„å‡½æ•°ï¼Œç¡çœ å”¤é†’æ—¶ç”¨æ¥æŸ¥è¯¢sensorhubçš„çŠ¶æ€ */
 extern int getSensorMcuMode(void);
 extern int get_iomcu_power_state(void);
 #endif
@@ -706,7 +706,8 @@ void host_send_disallow_msg(struct work_struct *work)
 {
 #define MAX_TTYRESUME_LOOPCNT 300
 #define MAX_SENSORHUB_LOOPCNT 30
-#ifdef ASYNCB_SUSPENDED
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION)) || \
+    defined(ASYNCB_SUSPENDED)
     uint32 loop_tty_resume_cnt = 0;
 #endif
 #ifdef CONFIG_INPUTHUB
@@ -729,8 +730,8 @@ void host_send_disallow_msg(struct work_struct *work)
         return;
     }
 
-    /* ·ÀÖ¹hostË¯ÃßÇé¿öÏÂ±»dev»½ĞÑ½øÈëgpioÖĞ¶ÏºóÖ±½ÓÔÚÕâÀïÏÂ·¢ÏûÏ¢£¬
-     * ´ËÊ±uart¿ÉÄÜ»¹Ã»ÓĞready,ËùÒÔÕâÀïµÈ´ıtty resumeÖ®ºó²ÅÏÂ·¢ÏûÏ¢ */
+    /* é˜²æ­¢hostç¡çœ æƒ…å†µä¸‹è¢«devå”¤é†’è¿›å…¥gpioä¸­æ–­åç›´æ¥åœ¨è¿™é‡Œä¸‹å‘æ¶ˆæ¯ï¼Œ
+     * æ­¤æ—¶uartå¯èƒ½è¿˜æ²¡æœ‰ready,æ‰€ä»¥è¿™é‡Œç­‰å¾…tty resumeä¹‹åæ‰ä¸‹å‘æ¶ˆæ¯ */
     if ((ps_core_d->tty) && (ps_core_d->tty->port)) {
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)) && (_PRE_OS_VERSION_LINUX == _PRE_OS_VERSION))
         while (tty_port_suspended(ps_core_d->tty->port)) {
@@ -757,7 +758,7 @@ void host_send_disallow_msg(struct work_struct *work)
 
 #ifdef CONFIG_INPUTHUB
         if (get_uart_pclk_source() == UART_PCLK_FROM_SENSORHUB) {
-            /* ²éÑ¯sensorhub×´Ì¬£¬Èç¹û²»ÊÇwkup×´Ì¬£¬uartµÄÊ±ÖÓ¿ÉÄÜ»á²»¶Ô */
+            /* æŸ¥è¯¢sensorhubçŠ¶æ€ï¼Œå¦‚æœä¸æ˜¯wkupçŠ¶æ€ï¼Œuartçš„æ—¶é’Ÿå¯èƒ½ä¼šä¸å¯¹ */
             if (getSensorMcuMode() == 1) {
                 PS_PRINT_INFO("sensorbub state is %d\n", get_iomcu_power_state());
                 /* 0,1->ST_POWERON,8->ST_SLEEP,9->ST_WAKEUP */
@@ -780,7 +781,7 @@ void host_send_disallow_msg(struct work_struct *work)
     /* clear pf msg parsing buffer to avoid problem caused by wrong packet */
     reset_uart_rx_buf();
 
-    /* ÉèÖÃuart¿ÉÓÃ,ÏÂ·¢disallow sleepÏûÏ¢,»½ĞÑÍê³É */
+    /* è®¾ç½®uartå¯ç”¨,ä¸‹å‘disallow sleepæ¶ˆæ¯,å”¤é†’å®Œæˆ */
     spin_lock_irqsave(&pm_data->uart_state_spinlock, flags);
     bfgx_uart_state_set(UART_READY);
     spin_unlock_irqrestore(&pm_data->uart_state_spinlock, flags);
@@ -795,8 +796,8 @@ void host_send_disallow_msg(struct work_struct *work)
     }
 
     /*
-     * ÕâÀïÉèÖÃÍê³ÉÁ¿¶ÔÓÚdev wkup hostÃ»ÓĞÒâÒå, Ö»ÊÇ±£Ö¤ºÍhost wkup devµÄ²Ù×÷Ò»ÖÂ
-     * ×¢ÒâÕâ¾ÍÒªÇóhost wkup devÇ°ĞèÒªINITÍê³ÉÁ¿¼ÆÊı
+     * è¿™é‡Œè®¾ç½®å®Œæˆé‡å¯¹äºdev wkup hostæ²¡æœ‰æ„ä¹‰, åªæ˜¯ä¿è¯å’Œhost wkup devçš„æ“ä½œä¸€è‡´
+     * æ³¨æ„è¿™å°±è¦æ±‚host wkup devå‰éœ€è¦INITå®Œæˆé‡è®¡æ•°
      */
     complete_all(&pm_data->host_wkup_dev_comp);
 
@@ -871,7 +872,7 @@ void host_allow_bfg_sleep(struct work_struct *work)
         pm_data->bfg_timer_mod_cnt++;
         return;
     }
-    /* ÉèÖÃdevice×´Ì¬ÎªË¯ÃßÌ¬£¬ÔÚhost»½ĞÑdevÍê³ÉÖ®Ç°(»òdev»½ĞÑhostÇ°)uart²»¿ÉÓÃ */
+    /* è®¾ç½®deviceçŠ¶æ€ä¸ºç¡çœ æ€ï¼Œåœ¨hostå”¤é†’devå®Œæˆä¹‹å‰(æˆ–devå”¤é†’hostå‰)uartä¸å¯ç”¨ */
     PS_PRINT_INFO("%s,set UART_NOT_READY,BFGX_SLEEP\n", __func__);
     ps_core_d->ps_pm->bfgx_uart_state_set(UART_NOT_READY);
     ps_core_d->ps_pm->bfgx_dev_state_set(BFGX_SLEEP);
@@ -911,7 +912,7 @@ void bfg_check_timer_work(void)
         return;
     }
 
-    /* 10sºóÃ»ÓĞÈËÆô¶¯bfg timer ²¹¾È:Ö±½ÓÌá½»allow to sleep work */
+    /* 10såæ²¡æœ‰äººå¯åŠ¨bfg timer è¡¥æ•‘:ç›´æ¥æäº¤allow to sleep work */
     if ((pm_data->bfg_timer_mod_cnt == pm_data->bfg_timer_mod_cnt_pre) && (pm_data->bfg_timer_mod_cnt != 0) &&
         (atomic_read(&pm_data->gnss_sleep_flag) == GNSS_AGREE_SLEEP)) {
         if (time_after(jiffies, pm_data->bfg_timer_check_time)) {
@@ -1111,7 +1112,7 @@ void bfgx_gpio_intr_enable(uint32 ul_en)
     uint64 flags;
     spin_lock_irqsave(&pm_data->bfg_irq_spinlock, flags);
     if (ul_en) {
-        /* ²»ÔÙÖ§³ÖÖĞ¶Ï¿ª¹ØÇ¶Ì× */
+        /* ä¸å†æ”¯æŒä¸­æ–­å¼€å…³åµŒå¥— */
         if (pm_data->ul_irq_stat) {
             enable_irq(pm_data->bfg_irq);
             pm_data->ul_irq_stat = 0;
@@ -1148,7 +1149,7 @@ int32 bfgx_dev_power_on(void)
         PS_PRINT_ERR("ps_core_d is err\n");
         return BFGX_POWER_FAILED;
     }
-    /* ·ÀÖ¹HostË¯Ãß */
+    /* é˜²æ­¢Hostç¡çœ  */
     oal_wake_lock(&pm_data->bfg_wake_lock);
 
     bfgx_gpio_intr_enable(OAL_TRUE);
@@ -1161,7 +1162,7 @@ int32 bfgx_dev_power_on(void)
     }
 
     ps_uart_state_pre(ps_core_d->tty);
-    /* WAIT_BFGX_BOOTOK_TIME:Õâ¸öÊ±¼äÄ¿Ç°Îª1s£¬ÓĞ1s²»¹»µÄÇé¿ö£¬ĞèÒª¹Ø×¢ */
+    /* WAIT_BFGX_BOOTOK_TIME:è¿™ä¸ªæ—¶é—´ç›®å‰ä¸º1sï¼Œæœ‰1sä¸å¤Ÿçš„æƒ…å†µï¼Œéœ€è¦å…³æ³¨ */
     timeleft = wait_for_completion_timeout(&pm_data->dev_bootok_ack_comp, msecs_to_jiffies(WAIT_BFGX_BOOTOK_TIME));
     if (!timeleft) {
         ps_uart_state_dump(ps_core_d->tty);
@@ -1230,7 +1231,7 @@ int32 bfgx_dev_power_off(void)
         return -FAILURE;
     }
 
-    /* µ¥ºìÍâÃ»ÓĞĞÄÌø */
+    /* å•çº¢å¤–æ²¡æœ‰å¿ƒè·³ */
     if (oal_atomic_read(&ir_only_mode) == 0) {
         pm_data->ps_pm_interface->operate_beat_timer(BEAT_TIMER_DELETE);
         del_timer_sync(&pm_data->bfg_timer);
@@ -1238,7 +1239,7 @@ int32 bfgx_dev_power_off(void)
         pm_data->bfg_timer_mod_cnt_pre = 0;
     }
 
-    /* ÏÂµç¼´½«Íê³É£¬ĞèÒªÔÚ´ËÊ±ÉèÖÃÏÂ´ÎÉÏµçÒªµÈ´ıdeviceÉÏµç³É¹¦µÄflag */
+    /* ä¸‹ç”µå³å°†å®Œæˆï¼Œéœ€è¦åœ¨æ­¤æ—¶è®¾ç½®ä¸‹æ¬¡ä¸Šç”µè¦ç­‰å¾…deviceä¸Šç”µæˆåŠŸçš„flag */
     atomic_set(&pm_data->bfg_needwait_devboot_flag, NEED_SET_FLAG);
     bd_info->bd_ops.bfgx_dev_power_off();
 
@@ -1464,7 +1465,7 @@ int32 wifi_power_fail_process(int32 error)
         case WIFI_POWER_PULL_POWER_GPIO_FAIL:
             break;
 
-        /* BFGX off£¬wifi firmware download failºÍwait boot up fail£¬Ö±½Ó·µ»ØÊ§°Ü£¬ÉÏ²ãÖØÊÔ£¬²»×ßDFR */
+        /* BFGX offï¼Œwifi firmware download failå’Œwait boot up failï¼Œç›´æ¥è¿”å›å¤±è´¥ï¼Œä¸Šå±‚é‡è¯•ï¼Œä¸èµ°DFR */
         case WIFI_POWER_BFGX_OFF_BOOT_UP_FAIL:
             if (oal_trigger_bus_exception(pm_data->pst_wlan_pm_info->pst_bus, OAL_TRUE) == OAL_TRUE) {
                 /* exception is processing, can't power off */
@@ -1479,7 +1480,7 @@ int32 wifi_power_fail_process(int32 error)
             board_power_off(WLAN_POWER);
             break;
 
-        /* BFGX on£¬wifiÉÏµçÊ§°Ü£¬½øĞĞÈ«ÏµÍ³¸´Î»£¬wifi±¾´Î·µ»ØÊ§°Ü£¬ÉÏ²ãÖØÊÔ */
+        /* BFGX onï¼Œwifiä¸Šç”µå¤±è´¥ï¼Œè¿›è¡Œå…¨ç³»ç»Ÿå¤ä½ï¼Œwifiæœ¬æ¬¡è¿”å›å¤±è´¥ï¼Œä¸Šå±‚é‡è¯• */
         case WIFI_POWER_BFGX_ON_BOOT_UP_FAIL:
             if (oal_trigger_bus_exception(pm_data->pst_wlan_pm_info->pst_bus, OAL_TRUE) == OAL_TRUE) {
                 /* exception is processing, can't power off */
@@ -1552,7 +1553,7 @@ int32 hitalk_power_on(void)
         return -FAILURE;
     }
 
-    /* wifiÉÏµçÊ±Èç¹ûµ¥ºìÍâ´ò¿ª£¬ÔòĞèÒª¹Ø±Õµ¥ºìÍâ£¬ÏÂÔØÈ«patch */
+    /* wifiä¸Šç”µæ—¶å¦‚æœå•çº¢å¤–æ‰“å¼€ï¼Œåˆ™éœ€è¦å…³é—­å•çº¢å¤–ï¼Œä¸‹è½½å…¨patch */
     if ((oal_atomic_read(&ir_only_mode) != 0)) {
         if (hw_ir_only_open_other_subsys() != BFGX_POWER_SUCCESS) {
             PS_PRINT_ERR("ir only mode,but close ir only mode fail!\n");
@@ -1575,7 +1576,7 @@ int32 hitalk_power_on(void)
         unsigned long long module_set = SSI_MODULE_MASK_COMM | SSI_MODULE_MASK_BCTRL | SSI_MODULE_MASK_WCTRL;
         oal_print_hi11xx_log(HI11XX_LOG_ERR, "hitalk power on failed\n");
         if (hi11xx_get_os_build_variant() == HI1XX_OS_BUILD_VARIANT_USER) {
-            if (!oal_print_rate_limit(PRINT_RATE_MINUTE)) { /* 1·ÖÖÓ´òÓ¡Ò»´Î */
+            if (!oal_print_rate_limit(PRINT_RATE_MINUTE)) { /* 1åˆ†é’Ÿæ‰“å°ä¸€æ¬¡ */
                 module_set = 0x0;
             }
         }
@@ -1652,7 +1653,7 @@ int32 wlan_power_on(void)
         return -FAILURE;
     }
 
-    /* wifiÉÏµçÊ±Èç¹ûµ¥ºìÍâ´ò¿ª£¬ÔòĞèÒª¹Ø±Õµ¥ºìÍâ£¬ÏÂÔØÈ«patch */
+    /* wifiä¸Šç”µæ—¶å¦‚æœå•çº¢å¤–æ‰“å¼€ï¼Œåˆ™éœ€è¦å…³é—­å•çº¢å¤–ï¼Œä¸‹è½½å…¨patch */
     if (oal_atomic_read(&ir_only_mode) != 0) {
         if (hw_ir_only_open_other_subsys() != BFGX_POWER_SUCCESS) {
             PS_PRINT_ERR("ir only mode,but close ir only mode fail!\n");
@@ -1862,7 +1863,7 @@ int32 device_mem_check(unsigned long long *time)
     PS_PRINT_INFO("===================start wcpu ram reg test!\n");
     w_ret = firmware_download_function(RAM_REG_TEST_CFG);
     if (w_ret == SUCCESS) {
-        /* µÈ´ıdeviceĞÅÏ¢´¦Àí */
+        /* ç­‰å¾…deviceä¿¡æ¯å¤„ç† */
         mdelay(wlan_mem_check_mdelay);
         w_ret = is_device_mem_test_succ();
         get_device_test_mem(file_name);
@@ -1884,7 +1885,7 @@ int32 device_mem_check(unsigned long long *time)
 
     pilot_cfg_patch_in_vendor[RAM_REG_TEST_CFG] = RAM_CHECK_CFG_HI1102A_PILOT_PATH;
     if (b_ret == SUCCESS) {
-        /* µÈ´ıdeviceĞÅÏ¢´¦Àí */
+        /* ç­‰å¾…deviceä¿¡æ¯å¤„ç† */
         mdelay(bfgx_mem_check_mdelay);
         b_ret = is_device_mem_test_succ();
         get_device_test_mem(file_name);
@@ -2269,7 +2270,7 @@ STATIC int low_power_probe(void)
         goto WLAN_INIT_FAIL;
     }
 
-    /* FPGA°æ±¾Ö§³Ö2M£¬¶¯Ì¬ĞŞ¸Ä */
+    /* FPGAç‰ˆæœ¬æ”¯æŒ2Mï¼ŒåŠ¨æ€ä¿®æ”¹ */
     if (!isAsic()) {
         default_baud_rate = LOW_FREQ_BAUD_RATE;
     }

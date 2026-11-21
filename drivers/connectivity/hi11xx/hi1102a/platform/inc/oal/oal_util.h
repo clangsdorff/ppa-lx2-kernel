@@ -3,28 +3,28 @@
 #ifndef __OAL_UTIL_H__
 #define __OAL_UTIL_H__
 
-/* ÆäËûÍ·ÎÄ¼ş°üº¬ */
+/* å…¶ä»–å¤´æ–‡ä»¶åŒ…å« */
 #include "oal_types.h"
 #include "oal_mm.h"
 #include "arch/oal_util.h"
 #include "platform_oneimage_define.h"
 #include "securec.h"
 
-/* ºê¶¨Òå */
+/* å®å®šä¹‰ */
 #define OAL_VA_START va_start
 #define OAL_VA_END   va_end
 
 #define OAL_VA_LIST va_list
 
 #define OAL_MAC_ADDRESS_LAN 6
-/* Æ´½ÓÎª16 bit»òÕß 32bit */
+/* æ‹¼æ¥ä¸º16 bitæˆ–è€… 32bit */
 #define OAL_MAKE_WORD16(lsb, msb)           ((((oal_uint16)(msb) << 8) & 0xFF00) | (lsb))
 #define OAL_MAKE_WORD32(lsw, msw)           ((((oal_uint32)(msw) << 16) & 0xFFFF0000) | (lsw))
 #define OAL_JOIN_WORD32(lsb, ssb, asb, msb) (((oal_uint32)(msb) << 24) | ((oal_uint32)(asb) << 16) | \
                                              ((oal_uint32)(ssb) << 8) | (lsb))
 #define OAL_JOIN_WORD20(lsw, msw)           ((((oal_uint32)(msw) << 10) & 0xFFC00) | ((lsw) & 0x3FF))
 
-/* ¼ÆËãÎª×Ö½Ú¶ÔÆëºóÌî³äºóµÄ³¤¶È */
+/* è®¡ç®—ä¸ºå­—èŠ‚å¯¹é½åå¡«å……åçš„é•¿åº¦ */
 #define PADDING(x, size)           (((x) + (size) - 1) & (~ ((size) - 1)))
 
 /* increment with wrap-around */
@@ -40,16 +40,16 @@
         (_l) &= ((_sz) - 1); \
     } while (0)
 
-/* »ñÈ¡´óĞ¡ */
+/* è·å–å¤§å° */
 #define OAL_SIZEOF sizeof
 
-/* »ñÈ¡Êı×é´óĞ¡ */
+/* è·å–æ•°ç»„å¤§å° */
 #define OAL_ARRAY_SIZE(_ast_array) (sizeof(_ast_array) / sizeof((_ast_array)[0]))
 
-/* ËÄ×Ö½Ú¶ÔÆë */
+/* å››å­—èŠ‚å¯¹é½ */
 #define OAL_GET_4BYTE_ALIGN_VALUE(_ul_size) (((_ul_size) + 0x03) & (~0x03))
 
-/* »ñÈ¡µ±Ç°Ïß³ÌĞÅÏ¢ */
+/* è·å–å½“å‰çº¿ç¨‹ä¿¡æ¯ */
 #define OAL_CURRENT_TASK (current_thread_info()->task)
 
 #define OAL_SWAP_BYTEORDER_16(_val) ((((_val)&0x00FF) << 8) + (((_val)&0xFF00) >> 8))
@@ -104,24 +104,24 @@
 #define oal_atomic_inc_return atomic_inc_return
 #endif
 
-/* ±È½Ïºê */
+/* æ¯”è¾ƒå® */
 #define OAL_MIN(_A, _B) (((_A) < (_B)) ? (_A) : (_B))
 
-/* ±È½Ïºê */
+/* æ¯”è¾ƒå® */
 #define OAL_MAX(_A, _B) (((_A) > (_B)) ? (_A) : (_B))
 
 #define OAL_SUB(_A, _B) (((_A) > (_B)) ? ((_A) - (_B)) : (0))
 
 #define OAL_ABSOLUTE_SUB(_A, _B) (((_A) > (_B)) ? ((_A) - (_B)) : ((_B) - (_A)))
 
-/* ´ÓÄ³¸öÉè±¸¶ÁÈ¡Ä³¸ö¼Ä´æÆ÷µØÖ·µÄ32-bit¼Ä´æÆ÷µÄÖµ¡£ */
+/* ä»æŸä¸ªè®¾å¤‡è¯»å–æŸä¸ªå¯„å­˜å™¨åœ°å€çš„32-bitå¯„å­˜å™¨çš„å€¼ã€‚ */
 #define OAL_REG_READ32(_addr) \
     *((OAL_VOLATILE oal_uint32 *)(_addr))
 
 #define OAL_REG_READ16(_addr) \
     *((OAL_VOLATILE oal_uint16 *)(_addr))
 
-/* ÍùÄ³¸öÉè±¸Ä³¸ö32-bit¼Ä´æÆ÷µØÖ·Ğ´ÈëÄ³¸öÖµ */
+/* å¾€æŸä¸ªè®¾å¤‡æŸä¸ª32-bitå¯„å­˜å™¨åœ°å€å†™å…¥æŸä¸ªå€¼ */
 #define OAL_REG_WRITE32(_addr, _val) \
     (*((OAL_VOLATILE oal_uint32 *)(_addr)) = (_val))
 #define OAL_REG_WRITE16(_addr, _val) \
@@ -170,11 +170,13 @@
 #define BIT0  ((oal_uint32)(1 << 0))
 #define ALL   0xFFFF
 
+#ifndef BIT
 #define BIT(nr) (1UL << (nr))
+#endif
 
-#define OAL_BITS_PER_BYTE 8 /* Ò»¸ö×Ö½ÚÖĞ°üº¬µÄbitÊıÄ¿ */
+#define OAL_BITS_PER_BYTE 8 /* ä¸€ä¸ªå­—èŠ‚ä¸­åŒ…å«çš„bitæ•°ç›® */
 
-/* Î»²Ù×÷ */
+/* ä½æ“ä½œ */
 #define OAL_SET_BIT(_val)                        (1 << (_val))
 #define OAL_LEFT_SHIFT(_data, _num)              ((_data) << (_num))
 #define OAL_RGHT_SHIFT(_data, _num)              ((_data) >> (_num))
@@ -185,7 +187,7 @@
     } while (0)
 #define OAL_GET_BITS(_data, _bits, _pos) (((_data) >> (_pos)) & (((oal_uint32)1 << (_bits)) - 1))
 
-/* Î»Êı¶¨Òå */
+/* ä½æ•°å®šä¹‰ */
 #define NUM_1_BITS  1
 #define NUM_2_BITS  2
 #define NUM_3_BITS  3
@@ -219,7 +221,7 @@
 #define NUM_31_BITS 31
 #define NUM_32_BITS 32
 
-/* Î»Æ«ÒÆ¶¨Òå */
+/* ä½åç§»å®šä¹‰ */
 #define BIT_OFFSET_0  0
 #define BIT_OFFSET_1  1
 #define BIT_OFFSET_2  2
@@ -253,25 +255,25 @@
 #define BIT_OFFSET_30 30
 #define BIT_OFFSET_31 31
 
-/* ¶¨µãÊıËÄÉáÎåÈë£¬²¢È¡ÕûÊı²¿·Ö, fract_bitsÎªĞ¡ÊıÎ»Êı */
+/* å®šç‚¹æ•°å››èˆäº”å…¥ï¼Œå¹¶å–æ•´æ•°éƒ¨åˆ†, fract_bitsä¸ºå°æ•°ä½æ•° */
 #define _ROUND_POS(fix_num, fract_bits) (((fix_num) + (1 << ((fract_bits)-1))) >> (fract_bits))
 #define _ROUND_NEG(fix_num, fract_bits) (-_ROUND_POS(-(fix_num), (fract_bits)))
 #define OAL_ROUND(fix_num, fract_bits)\
         ((fix_num) > 0 ? _ROUND_POS(fix_num, fract_bits) : _ROUND_NEG(fix_num, fract_bits))
-/* ¼ÆËãÎª×Ö½Ú¶ÔÆëºóÌî³äºóµÄ³¤¶È */
+/* è®¡ç®—ä¸ºå­—èŠ‚å¯¹é½åå¡«å……åçš„é•¿åº¦ */
 #define OAL_ROUNDUP(_old_len, _align) ((((_old_len) + ((_align)-1)) / (_align)) * (_align))
 
-#define OAL_RSSI_INIT_MARKER   0x320 /* RSSIÆ½»¬Öµ³õÊ¼Öµ */
-#define OAL_RSSI_MAX_DELTA     24    /* ×î´ó²½³¤ 24/8 = 3 */
+#define OAL_RSSI_INIT_MARKER   0x320 /* RSSIå¹³æ»‘å€¼åˆå§‹å€¼ */
+#define OAL_RSSI_MAX_DELTA     24    /* æœ€å¤§æ­¥é•¿ 24/8 = 3 */
 #define OAL_RSSI_FRACTION_BITS 3
-#define OAL_RSSI_SIGNAL_MIN    (-103)   /* ÉÏ±¨RSSIÏÂ±ß½ç */
-#define OAL_RSSI_SIGNAL_MAX    5      /* ÉÏ±¨RSSIÉÏ±ß½ç */
-#define OAL_SNR_INIT_VALUE     0x7F   /* SNRÉÏ±¨µÄ³õÊ¼Öµ */
-#define OAL_RSSI_INIT_VALUE    (-128) /* RSSIµÄ³õÊ¼Öµ */
+#define OAL_RSSI_SIGNAL_MIN    (-103)   /* ä¸ŠæŠ¥RSSIä¸‹è¾¹ç•Œ */
+#define OAL_RSSI_SIGNAL_MAX    5      /* ä¸ŠæŠ¥RSSIä¸Šè¾¹ç•Œ */
+#define OAL_SNR_INIT_VALUE     0x7F   /* SNRä¸ŠæŠ¥çš„åˆå§‹å€¼ */
+#define OAL_RSSI_INIT_VALUE    (-128) /* RSSIçš„åˆå§‹å€¼ */
 
 #define OAL_IPV6_ADDR_LEN 16
 
-/* STRUCT¶¨Òå */
+/* STRUCTå®šä¹‰ */
 #define HI11XX_LOG_ERR     0
 #define HI11XX_LOG_WARN    1
 #define HI11XX_LOG_INFO    2
@@ -329,13 +331,13 @@ struct _hwifi_panic_log_ {
     }
 #endif
 
-/* º¯ÊıÉùÃ÷ */
+/* å‡½æ•°å£°æ˜ */
 extern oal_uint16 cal_crc_16(const oal_uint8 *data, const oal_uint16 data_bit_num);
 
 #ifdef _PRE_CONFIG_HISI_PANIC_DUMP_SUPPORT
 /*
- * º¯ Êı Ãû  : hwifi_panic_log_register
- * ¹¦ÄÜÃèÊö  : Kernl Panic µÄ»Øµ÷º¯Êı×¢²á
+ * å‡½ æ•° å  : hwifi_panic_log_register
+ * åŠŸèƒ½æè¿°  : Kernl Panic çš„å›è°ƒå‡½æ•°æ³¨å†Œ
  */
 extern oal_void hwifi_panic_log_register(hwifi_panic_log *log, void *data);
 extern oal_void hwifi_panic_log_unregister(hwifi_panic_log *log);
@@ -366,8 +368,8 @@ OAL_STATIC OAL_INLINE oal_void oal_print_inject_check_stack(oal_void)
 }
 
 /*
- * º¯ Êı Ãû  : oal_strtohex
- * ¹¦ÄÜÃèÊö  : ½«Ò»¸ö×Ö·û×ª»¯³É16½øÖÆÊı
+ * å‡½ æ•° å  : oal_strtohex
+ * åŠŸèƒ½æè¿°  : å°†ä¸€ä¸ªå­—ç¬¦è½¬åŒ–æˆ16è¿›åˆ¶æ•°
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_strtohex(const oal_int8 *c_string)
 {
@@ -380,19 +382,19 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_strtohex(const oal_int8 *c_string)
     if (*c_string >= '0' && *c_string <= '9') {
         uc_ret = (oal_uint8)(*c_string - '0');
     } else if (*c_string >= 'A' && *c_string <= 'F') {
-        uc_ret = (oal_uint8)(*c_string - 'A' + 10); /* ¼Ó10ÎªÁË±£Ö¤È¡³öµÄ'A'~'F'µÈÓÚ10~15 */
+        uc_ret = (oal_uint8)(*c_string - 'A' + 10); /* åŠ 10ä¸ºäº†ä¿è¯å–å‡ºçš„'A'~'F'ç­‰äº10~15 */
     } else if (*c_string >= 'a' && *c_string <= 'f') {
-        uc_ret = (oal_uint8)(*c_string - 'a' + 10); /* ¼Ó10ÎªÁË±£Ö¤È¡³öµÄ'a'~'f'µÈÓÚ10~15 */
+        uc_ret = (oal_uint8)(*c_string - 'a' + 10); /* åŠ 10ä¸ºäº†ä¿è¯å–å‡ºçš„'a'~'f'ç­‰äº10~15 */
     }
 
     return uc_ret;
 }
 
 /*
- * º¯ Êı Ãû  : oal_strtoaddr
- * ¹¦ÄÜÃèÊö  : ×Ö·û´®×ªMACµØÖ·
- * ÊäÈë²ÎÊı  : pc_param: MACµØÖ·×Ö·û´®, ¸ñÊ½ xx:xx:xx:xx:xx:xx  ·Ö¸ô·ûÖ§³Ö':'Óë'-'
- * Êä³ö²ÎÊı  : puc_mac_addr: ×ª»»³É16½øÖÆºóµÄMACµØÖ·
+ * å‡½ æ•° å  : oal_strtoaddr
+ * åŠŸèƒ½æè¿°  : å­—ç¬¦ä¸²è½¬MACåœ°å€
+ * è¾“å…¥å‚æ•°  : pc_param: MACåœ°å€å­—ç¬¦ä¸², æ ¼å¼ xx:xx:xx:xx:xx:xx  åˆ†éš”ç¬¦æ”¯æŒ':'ä¸'-'
+ * è¾“å‡ºå‚æ•°  : puc_mac_addr: è½¬æ¢æˆ16è¿›åˆ¶åçš„MACåœ°å€
  */
 OAL_STATIC OAL_INLINE oal_void oal_strtoaddr(const oal_int8 *pc_param, oal_uint8 *puc_mac_addr)
 {
@@ -404,7 +406,7 @@ OAL_STATIC OAL_INLINE oal_void oal_strtoaddr(const oal_int8 *pc_param, oal_uint8
         return;
     }
 
-    /* »ñÈ¡macµØÖ·,16½øÖÆ×ª»» */
+    /* è·å–macåœ°å€,16è¿›åˆ¶è½¬æ¢ */
     for (uc_char_index = 0; uc_char_index < uc_mac_max_num; uc_char_index++) {
         if ((*pc_param == ':') || (*pc_param == '-')) {
             pc_param++;
@@ -415,7 +417,7 @@ OAL_STATIC OAL_INLINE oal_void oal_strtoaddr(const oal_int8 *pc_param, oal_uint8
             continue;
         }
 
-        /* ÏÂÁĞ¼ÆËãÊÇ°Ñ×Ö·û´®×ª»»³ÉµÄmacµØÖ·Ğ´µ½buffÀï£¬xx:xx Ö»¶ÔÓ¦Á½¸ömacµØÖ· */
+        /* ä¸‹åˆ—è®¡ç®—æ˜¯æŠŠå­—ç¬¦ä¸²è½¬æ¢æˆçš„macåœ°å€å†™åˆ°buffé‡Œï¼Œxx:xx åªå¯¹åº”ä¸¤ä¸ªmacåœ°å€ */
         puc_mac_addr[uc_char_index / 2] =
             (oal_uint8)(puc_mac_addr[uc_char_index / 2] * 16 * (uc_char_index % 2) +
                         oal_strtohex(pc_param));
@@ -424,22 +426,22 @@ OAL_STATIC OAL_INLINE oal_void oal_strtoaddr(const oal_int8 *pc_param, oal_uint8
 }
 
 /*
- * º¯ Êı Ãû  : oal_strtoipv6
- * ¹¦ÄÜÃèÊö  : ×Ö·û´®×ªipv6µØÖ·
- * ÊäÈë²ÎÊı  : pc_param: ipv6µØÖ·×Ö·û´®, ¸ñÊ½ xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx
- * Êä³ö²ÎÊı  : puc_mac_addr: ×ª»»³É16½øÖÆºóµÄipv6µØÖ·
+ * å‡½ æ•° å  : oal_strtoipv6
+ * åŠŸèƒ½æè¿°  : å­—ç¬¦ä¸²è½¬ipv6åœ°å€
+ * è¾“å…¥å‚æ•°  : pc_param: ipv6åœ°å€å­—ç¬¦ä¸², æ ¼å¼ xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx:xx
+ * è¾“å‡ºå‚æ•°  : puc_mac_addr: è½¬æ¢æˆ16è¿›åˆ¶åçš„ipv6åœ°å€
  */
 OAL_STATIC OAL_INLINE oal_void oal_strtoipv6(const oal_int8 *pc_param, oal_uint8 *puc_ipv6_addr)
 {
     oal_uint8 uc_char_index;
-    const oal_uint32 uc_ipv6_max_num = OAL_IPV6_ADDR_LEN * 2; /* ipv6¸ñÊ½ĞèÒª£¬xx:xx ¶ÔÓ¦Á½¸öipv6µØÖ· */
+    const oal_uint32 uc_ipv6_max_num = OAL_IPV6_ADDR_LEN * 2; /* ipv6æ ¼å¼éœ€è¦ï¼Œxx:xx å¯¹åº”ä¸¤ä¸ªipv6åœ°å€ */
 
     if (OAL_UNLIKELY((pc_param == NULL) || (puc_ipv6_addr == NULL))) {
         OAL_WARN_ON(1);
         return;
     }
 
-    /* »ñÈ¡ipv6µØÖ·,16½øÖÆ×ª»» */
+    /* è·å–ipv6åœ°å€,16è¿›åˆ¶è½¬æ¢ */
     for (uc_char_index = 0; uc_char_index < uc_ipv6_max_num; uc_char_index++) {
         if ((*pc_param == ':')) {
             pc_param++;
@@ -449,7 +451,7 @@ OAL_STATIC OAL_INLINE oal_void oal_strtoipv6(const oal_int8 *pc_param, oal_uint8
 
             continue;
         }
-        /* ½«ipv6×Ö·û´®×ª»»Îª16½øÖÆÊı×é */
+        /* å°†ipv6å­—ç¬¦ä¸²è½¬æ¢ä¸º16è¿›åˆ¶æ•°ç»„ */
         puc_ipv6_addr[uc_char_index >> 1] =
             (oal_uint8)(((puc_ipv6_addr[uc_char_index >> 1]) << 4) * (uc_char_index % 2) +
                         oal_strtohex(pc_param));
@@ -458,8 +460,8 @@ OAL_STATIC OAL_INLINE oal_void oal_strtoipv6(const oal_int8 *pc_param, oal_uint8
 }
 
 /*
- * º¯ Êı Ãû  : oal_memcmp
- * ¹¦ÄÜÃèÊö  : compare memory areas
+ * å‡½ æ•° å  : oal_memcmp
+ * åŠŸèƒ½æè¿°  : compare memory areas
  */
 OAL_STATIC OAL_INLINE oal_int oal_memcmp(OAL_CONST oal_void *p_buf1, OAL_CONST oal_void *p_buf2, oal_uint32 ul_count)
 {
@@ -482,10 +484,10 @@ OAL_STATIC OAL_INLINE oal_int oal_strncasecmp(OAL_CONST oal_int8 *p_buf1, OAL_CO
 }
 
 /*
- * º¯ Êı Ãû  : oal_get_random_bytes
- * ¹¦ÄÜÃèÊö  : ´ÓurandomÎÄ¼ş»ñÈ¡Ëæ»úÖµ
- * ÊäÈë²ÎÊı  : pc_random_buf :´ÓÎÄ¼ş¶Á³öÊı¾İºó´æ·ÅµÄbuf
- *             ul_random_len :¶ÁÈ¡Êı¾İ´óĞ¡(×Ö½ÚÊı)
+ * å‡½ æ•° å  : oal_get_random_bytes
+ * åŠŸèƒ½æè¿°  : ä»urandomæ–‡ä»¶è·å–éšæœºå€¼
+ * è¾“å…¥å‚æ•°  : pc_random_buf :ä»æ–‡ä»¶è¯»å‡ºæ•°æ®åå­˜æ”¾çš„buf
+ *             ul_random_len :è¯»å–æ•°æ®å¤§å°(å­—èŠ‚æ•°)
  */
 OAL_STATIC OAL_INLINE void oal_get_random_bytes(oal_int8 *pc_random_buf, oal_uint32 ul_random_len)
 {
@@ -504,9 +506,9 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_get_random(oal_void)
 }
 
 /*
- * º¯ Êı Ãû  : oal_gen_random
- * ¹¦ÄÜÃèÊö  : ²úÉúËæ»úÊı
- * ÊäÈë²ÎÊı  : ul_val:Ëæ»úÖÖ×Ó   us_rst_flag:0:²»¸üĞÂËæ»úÖÖ×Ó£¬·Ç0:¸üĞÂËæ»úÖÖ×Ó
+ * å‡½ æ•° å  : oal_gen_random
+ * åŠŸèƒ½æè¿°  : äº§ç”Ÿéšæœºæ•°
+ * è¾“å…¥å‚æ•°  : ul_val:éšæœºç§å­   us_rst_flag:0:ä¸æ›´æ–°éšæœºç§å­ï¼Œé0:æ›´æ–°éšæœºç§å­
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_gen_random(oal_uint32 ul_val, oal_uint8 us_rst_flag)
 {
@@ -519,10 +521,10 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_gen_random(oal_uint32 ul_val, oal_uint8 us_r
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_get_num_one_byte
- * ¹¦ÄÜÃèÊö  : »ñÈ¡µ¥×Ö½ÚÖĞµÄbit1µÄ¸öÊı
- * ÊäÈë²ÎÊı  : uc_byte:ĞèÒª²Ù×÷µÄ×Ö½Ú
- * ·µ »Ø Öµ  : bitµÄ¸öÊı
+ * å‡½ æ•° å  : oal_bit_get_num_one_byte
+ * åŠŸèƒ½æè¿°  : è·å–å•å­—èŠ‚ä¸­çš„bit1çš„ä¸ªæ•°
+ * è¾“å…¥å‚æ•°  : uc_byte:éœ€è¦æ“ä½œçš„å­—èŠ‚
+ * è¿” å› å€¼  : bitçš„ä¸ªæ•°
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_bit_get_num_one_byte(oal_uint8 uc_byte)
 {
@@ -534,10 +536,10 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_get_num_one_byte(oal_uint8 uc_byte)
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_get_num_four_byte
- * ¹¦ÄÜÃèÊö  : »ñÈ¡4×Ö½ÚÖĞbit1µÄ¸öÊı
- * ÊäÈë²ÎÊı  : uc_byte:ĞèÒª²Ù×÷µÄ×Ö½Ú
- * ·µ »Ø Öµ  : bitµÄ¸öÊı
+ * å‡½ æ•° å  : oal_bit_get_num_four_byte
+ * åŠŸèƒ½æè¿°  : è·å–4å­—èŠ‚ä¸­bit1çš„ä¸ªæ•°
+ * è¾“å…¥å‚æ•°  : uc_byte:éœ€è¦æ“ä½œçš„å­—èŠ‚
+ * è¿” å› å€¼  : bitçš„ä¸ªæ•°
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_bit_get_num_four_byte(oal_uint32 ul_byte)
 {
@@ -551,10 +553,10 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_bit_get_num_four_byte(oal_uint32 ul_byte)
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_set_bit_one_byte
- * ¹¦ÄÜÃèÊö  : ¶Ô1×Ö½ÚµÄÖ¸¶¨Î»ÖÃÒ»
- * ÊäÈë²ÎÊı  : puc_byte: Òª½øĞĞÎ»²Ù×÷µÄ±äÁ¿µØÖ·
- *             nr: ÖÃÎ»µÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_set_bit_one_byte
+ * åŠŸèƒ½æè¿°  : å¯¹1å­—èŠ‚çš„æŒ‡å®šä½ç½®ä¸€
+ * è¾“å…¥å‚æ•°  : puc_byte: è¦è¿›è¡Œä½æ“ä½œçš„å˜é‡åœ°å€
+ *             nr: ç½®ä½çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_one_byte(oal_uint8 *puc_byte, oal_bitops nr)
 {
@@ -566,10 +568,10 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_one_byte(oal_uint8 *puc_byte, oal
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_clear_bit_one_byte
- * ¹¦ÄÜÃèÊö  : ¶Ô1×Ö½ÚµÄÖ¸¶¨Î»ÖÃÁã
- * ÊäÈë²ÎÊı  : puc_byte: Òª½øĞĞÎ»²Ù×÷µÄ±äÁ¿µØÖ·
- *             nr: ÖÃÁãµÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_clear_bit_one_byte
+ * åŠŸèƒ½æè¿°  : å¯¹1å­—èŠ‚çš„æŒ‡å®šä½ç½®é›¶
+ * è¾“å…¥å‚æ•°  : puc_byte: è¦è¿›è¡Œä½æ“ä½œçš„å˜é‡åœ°å€
+ *             nr: ç½®é›¶çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_one_byte(oal_uint8 *puc_byte, oal_bitops nr)
 {
@@ -586,10 +588,10 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_get_bit_one_byte(oal_uint8 uc_byte, oal_
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_set_bit_four_byte
- * ¹¦ÄÜÃèÊö  : ¶Ô4×Ö½ÚµÄÖ¸¶¨Î»ÖÃÒ»
- * ÊäÈë²ÎÊı  : pul_byte: Òª½øĞĞÎ»²Ù×÷µÄ±äÁ¿µØÖ·
- *             nr: ÖÃÎ»µÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_set_bit_four_byte
+ * åŠŸèƒ½æè¿°  : å¯¹4å­—èŠ‚çš„æŒ‡å®šä½ç½®ä¸€
+ * è¾“å…¥å‚æ•°  : pul_byte: è¦è¿›è¡Œä½æ“ä½œçš„å˜é‡åœ°å€
+ *             nr: ç½®ä½çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_four_byte(oal_uint32 *pul_byte, oal_bitops nr)
 {
@@ -601,10 +603,10 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_four_byte(oal_uint32 *pul_byte, o
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_clear_bit_four_byte
- * ¹¦ÄÜÃèÊö  : ¶Ô4×Ö½ÚµÄÖ¸¶¨Î»ÖÃÁã
- * ÊäÈë²ÎÊı  : pul_byte: Òª½øĞĞÎ»²Ù×÷µÄ±äÁ¿µØÖ·
- *             nr: ÖÃÁãµÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_clear_bit_four_byte
+ * åŠŸèƒ½æè¿°  : å¯¹4å­—èŠ‚çš„æŒ‡å®šä½ç½®é›¶
+ * è¾“å…¥å‚æ•°  : pul_byte: è¦è¿›è¡Œä½æ“ä½œçš„å˜é‡åœ°å€
+ *             nr: ç½®é›¶çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_four_byte(oal_uint32 *pul_byte, oal_bitops nr)
 {
@@ -616,8 +618,8 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_four_byte(oal_uint32 *pul_byte,
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_set_bit_eight_byte
- * ¹¦ÄÜÃèÊö  : ¶Ô8×Ö½ÚµÄÖ¸¶¨Î»ÖÃÒ»
+ * å‡½ æ•° å  : oal_bit_set_bit_eight_byte
+ * åŠŸèƒ½æè¿°  : å¯¹8å­—èŠ‚çš„æŒ‡å®šä½ç½®ä¸€
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_eight_byte(oal_uint64 *pull_byte, oal_bitops nr)
 {
@@ -629,8 +631,8 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_set_bit_eight_byte(oal_uint64 *pull_byte,
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_clear_bit_eight_byte
- * ¹¦ÄÜÃèÊö  : ¶Ô8×Ö½ÚµÄÖ¸¶¨Î»ÖÃ
+ * å‡½ æ•° å  : oal_bit_clear_bit_eight_byte
+ * åŠŸèƒ½æè¿°  : å¯¹8å­—èŠ‚çš„æŒ‡å®šä½ç½®
  */
 OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_eight_byte(oal_uint64 *pull_byte, oal_bitops nr)
 {
@@ -642,10 +644,10 @@ OAL_STATIC OAL_INLINE oal_void oal_bit_clear_bit_eight_byte(oal_uint64 *pull_byt
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_find_first_bit_one_byte
- * ¹¦ÄÜÃèÊö  : ÕÒµ½1×Ö½ÚÓÒÊıµÚÒ»¸öÊÇ1µÄÎ»Êı
- * ÊäÈë²ÎÊı  : puc_byte: Òª²éÕÒµÄ×Ö½Ú
- * ·µ »Ø Öµ  : ÓÒÊıµÚÒ»¸öÊÇ1µÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_find_first_bit_one_byte
+ * åŠŸèƒ½æè¿°  : æ‰¾åˆ°1å­—èŠ‚å³æ•°ç¬¬ä¸€ä¸ªæ˜¯1çš„ä½æ•°
+ * è¾“å…¥å‚æ•°  : puc_byte: è¦æŸ¥æ‰¾çš„å­—èŠ‚
+ * è¿” å› å€¼  : å³æ•°ç¬¬ä¸€ä¸ªæ˜¯1çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_bit_one_byte(oal_uint8 uc_byte)
 {
@@ -657,7 +659,7 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_bit_one_byte(oal_uint8 uc_byt
         uc_ret++;
         uc_byte = (uc_byte >> 1);
 
-        if (uc_ret > 7) { /* ÕâÊ±ºòËµÃ÷ÒÑ¾­µ½ÁË×î¸ßbitÁË */
+        if (uc_ret > 7) { /* è¿™æ—¶å€™è¯´æ˜å·²ç»åˆ°äº†æœ€é«˜bitäº† */
             return uc_ret;
         }
     }
@@ -666,10 +668,10 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_bit_one_byte(oal_uint8 uc_byt
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_find_first_zero_one_byte
- * ¹¦ÄÜÃèÊö  : ÕÒµ½1×Ö½ÚÓÒÊıµÚÒ»¸öÊÇ0µÄÎ»Êı
- * ÊäÈë²ÎÊı  : puc_byte: Òª²éÕÒµÄ×Ö½Ú
- * ·µ »Ø Öµ  : ÓÒÊıµÚÒ»¸öÊÇ0µÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_find_first_zero_one_byte
+ * åŠŸèƒ½æè¿°  : æ‰¾åˆ°1å­—èŠ‚å³æ•°ç¬¬ä¸€ä¸ªæ˜¯0çš„ä½æ•°
+ * è¾“å…¥å‚æ•°  : puc_byte: è¦æŸ¥æ‰¾çš„å­—èŠ‚
+ * è¿” å› å€¼  : å³æ•°ç¬¬ä¸€ä¸ªæ˜¯0çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_zero_one_byte(oal_uint8 uc_byte)
 {
@@ -682,7 +684,7 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_zero_one_byte(oal_uint8 uc_by
         uc_ret++;
         uc_byte = (uc_byte >> 1);
 
-        if (uc_ret > 7) { /* ÕâÊ±ºòËµÃ÷ÒÑ¾­µ½ÁË×î¸ßbitÁË */
+        if (uc_ret > 7) { /* è¿™æ—¶å€™è¯´æ˜å·²ç»åˆ°äº†æœ€é«˜bitäº† */
             return uc_ret;
         }
     }
@@ -691,10 +693,10 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_zero_one_byte(oal_uint8 uc_by
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_find_first_bit_four_byte
- * ¹¦ÄÜÃèÊö  : ÕÒµ½1×Ö½ÚÓÒÊıµÚÒ»¸öÊÇ1µÄÎ»Êı
- * ÊäÈë²ÎÊı  : puc_byte: Òª²éÕÒµÄ×Ö½Ú
- * ·µ »Ø Öµ  : ÓÒÊıµÚÒ»¸öÊÇ1µÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_find_first_bit_four_byte
+ * åŠŸèƒ½æè¿°  : æ‰¾åˆ°1å­—èŠ‚å³æ•°ç¬¬ä¸€ä¸ªæ˜¯1çš„ä½æ•°
+ * è¾“å…¥å‚æ•°  : puc_byte: è¦æŸ¥æ‰¾çš„å­—èŠ‚
+ * è¿” å› å€¼  : å³æ•°ç¬¬ä¸€ä¸ªæ˜¯1çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_bit_four_byte(oal_uint32 ul_byte)
 {
@@ -705,22 +707,22 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_bit_four_byte(oal_uint32 ul_b
     }
 
     if (!(ul_byte & 0xffff)) {
-        ul_byte >>= 16; /* ËµÃ÷32bitÊı¾İµÄµÍ16bitÈ«Îª0£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß16bit¿ªÊ¼ÕÒÎª1µÄÎ»Êı */
+        ul_byte >>= 16; /* è¯´æ˜32bitæ•°æ®çš„ä½16bitå…¨ä¸º0ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜16bitå¼€å§‹æ‰¾ä¸º1çš„ä½æ•° */
         uc_ret += 16;
     }
 
     if (!(ul_byte & 0xff)) {
-        ul_byte >>= 8; /* ËµÃ÷16bitÊı¾İµÄµÍ8bitÈ«Îª0£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß8bit¿ªÊ¼ÕÒÎª1µÄÎ»Êı */
+        ul_byte >>= 8; /* è¯´æ˜16bitæ•°æ®çš„ä½8bitå…¨ä¸º0ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜8bitå¼€å§‹æ‰¾ä¸º1çš„ä½æ•° */
         uc_ret += 8;
     }
 
     if (!(ul_byte & 0xf)) {
-        ul_byte >>= 4; /* ËµÃ÷8bitÊı¾İµÄµÍ4bitÈ«Îª0£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß4bit¿ªÊ¼ÕÒÎª1µÄÎ»Êı */
+        ul_byte >>= 4; /* è¯´æ˜8bitæ•°æ®çš„ä½4bitå…¨ä¸º0ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜4bitå¼€å§‹æ‰¾ä¸º1çš„ä½æ•° */
         uc_ret += 4;
     }
 
     if (!(ul_byte & 3)) {
-        ul_byte >>= 2; /* ËµÃ÷4bitÊı¾İµÄµÍ2bitÈ«Îª0£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß2bit¿ªÊ¼ÕÒÎª1µÄÎ»Êı */
+        ul_byte >>= 2; /* è¯´æ˜4bitæ•°æ®çš„ä½2bitå…¨ä¸º0ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜2bitå¼€å§‹æ‰¾ä¸º1çš„ä½æ•° */
         uc_ret += 2;
     }
 
@@ -732,10 +734,10 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_bit_four_byte(oal_uint32 ul_b
 }
 
 /*
- * º¯ Êı Ãû  : oal_bit_find_first_zero_four_byte
- * ¹¦ÄÜÃèÊö  : ÕÒµ½1×Ö½ÚÓÒÊıµÚÒ»¸öÊÇ0µÄÎ»Êı
- * ÊäÈë²ÎÊı  : puc_byte: Òª²éÕÒµÄ×Ö½Ú
- * ·µ »Ø Öµ  : ÓÒÊıµÚÒ»¸öÊÇ0µÄÎ»Êı
+ * å‡½ æ•° å  : oal_bit_find_first_zero_four_byte
+ * åŠŸèƒ½æè¿°  : æ‰¾åˆ°1å­—èŠ‚å³æ•°ç¬¬ä¸€ä¸ªæ˜¯0çš„ä½æ•°
+ * è¾“å…¥å‚æ•°  : puc_byte: è¦æŸ¥æ‰¾çš„å­—èŠ‚
+ * è¿” å› å€¼  : å³æ•°ç¬¬ä¸€ä¸ªæ˜¯0çš„ä½æ•°
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_zero_four_byte(oal_uint32 ul_byte)
 {
@@ -744,22 +746,22 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_zero_four_byte(oal_uint32 ul_
     ul_byte = ~ul_byte;
 
     if (!(ul_byte & 0xffff)) {
-        ul_byte >>= 16; /* ËµÃ÷32bitÊı¾İµÄµÍ16bitÈ«Îª1£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß16bit¿ªÊ¼ÕÒÎª0µÄÎ»Êı */
+        ul_byte >>= 16; /* è¯´æ˜32bitæ•°æ®çš„ä½16bitå…¨ä¸º1ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜16bitå¼€å§‹æ‰¾ä¸º0çš„ä½æ•° */
         uc_ret += 16;
     }
 
     if (!(ul_byte & 0xff)) {
-        ul_byte >>= 8; /* ËµÃ÷16bitÊı¾İµÄµÍ8bitÈ«Îª1£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß8bit¿ªÊ¼ÕÒÎª0µÄÎ»Êı */
+        ul_byte >>= 8; /* è¯´æ˜16bitæ•°æ®çš„ä½8bitå…¨ä¸º1ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜8bitå¼€å§‹æ‰¾ä¸º0çš„ä½æ•° */
         uc_ret += 8;
     }
 
     if (!(ul_byte & 0xf)) {
-        ul_byte >>= 4; /* ËµÃ÷8bitÊı¾İµÄµÍ4bitÈ«Îª1£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß4bit¿ªÊ¼ÕÒÎª0µÄÎ»Êı */
+        ul_byte >>= 4; /* è¯´æ˜8bitæ•°æ®çš„ä½4bitå…¨ä¸º1ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜4bitå¼€å§‹æ‰¾ä¸º0çš„ä½æ•° */
         uc_ret += 4;
     }
 
     if (!(ul_byte & 3)) {
-        ul_byte >>= 2; /* ËµÃ÷4bitÊı¾İµÄµÍ2bitÈ«Îª1£¬ËùÒÔ¿ÉÒÔÖ±½Ó´Ó¸ß2bit¿ªÊ¼ÕÒÎª0µÄÎ»Êı */
+        ul_byte >>= 2; /* è¯´æ˜4bitæ•°æ®çš„ä½2bitå…¨ä¸º1ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥ä»é«˜2bitå¼€å§‹æ‰¾ä¸º0çš„ä½æ•° */
         uc_ret += 2;
     }
 
@@ -771,11 +773,11 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_bit_find_first_zero_four_byte(oal_uint32 ul_
 }
 
 /*
- * º¯ Êı Ãû  : oal_set_mac_addr
- * ¹¦ÄÜÃèÊö  : ½«µÚ¶ş¸ömacµØÖ· ¸³Öµ¸ødiyimacµØÖ·
- * ÊäÈë²ÎÊı  : puc_mac_addr1: µÚÒ»¸ömacµØÖ·
- *             puc_mac_addr2: µÚ¶ş¸ömacµØÖ·
- * ·µ »Ø Öµ  : ³É¹¦OAL_SUCC£¬Ê§°ÜOAL_ERR_CODE_PTR_NULL
+ * å‡½ æ•° å  : oal_set_mac_addr
+ * åŠŸèƒ½æè¿°  : å°†ç¬¬äºŒä¸ªmacåœ°å€ èµ‹å€¼ç»™diyimacåœ°å€
+ * è¾“å…¥å‚æ•°  : puc_mac_addr1: ç¬¬ä¸€ä¸ªmacåœ°å€
+ *             puc_mac_addr2: ç¬¬äºŒä¸ªmacåœ°å€
+ * è¿” å› å€¼  : æˆåŠŸOAL_SUCCï¼Œå¤±è´¥OAL_ERR_CODE_PTR_NULL
  */
 OAL_STATIC OAL_INLINE oal_void oal_set_mac_addr(unsigned char *puc_mac_addr1, const unsigned char *puc_mac_addr2)
 {
@@ -785,10 +787,10 @@ OAL_STATIC OAL_INLINE oal_void oal_set_mac_addr(unsigned char *puc_mac_addr1, co
 }
 
 /*
- * º¯ Êı Ãû  : oal_set_mac_addr_zero
- * ¹¦ÄÜÃèÊö  : macµØÖ·ÖÃÁã
- * ÊäÈë²ÎÊı  : puc_mac_addr: ĞèÇåÁãµÄmacµØÖ·µÄÖ¸Õë
- * ·µ »Ø Öµ  :
+ * å‡½ æ•° å  : oal_set_mac_addr_zero
+ * åŠŸèƒ½æè¿°  : macåœ°å€ç½®é›¶
+ * è¾“å…¥å‚æ•°  : puc_mac_addr: éœ€æ¸…é›¶çš„macåœ°å€çš„æŒ‡é’ˆ
+ * è¿” å› å€¼  :
  */
 OAL_STATIC OAL_INLINE oal_void oal_set_mac_addr_zero(oal_uint8 *puc_mac_addr)
 {
@@ -796,11 +798,11 @@ OAL_STATIC OAL_INLINE oal_void oal_set_mac_addr_zero(oal_uint8 *puc_mac_addr)
 }
 
 /*
- * º¯ Êı Ãû  : oal_compare_mac_addr
- * ¹¦ÄÜÃèÊö  : ±È½ÏÁ½¸ömacµØÖ·ÊÇ·ñÏàµÈ
- * ÊäÈë²ÎÊı  : puc_mac_addr1: µÚÒ»¸ömacµØÖ·
- *             puc_mac_addr2: µÚ¶ş¸ömacµØÖ·
- * ·µ »Ø Öµ  : ²»µÈ·µ»Ø1 £» ÏàµÈ·µ»Ø0
+ * å‡½ æ•° å  : oal_compare_mac_addr
+ * åŠŸèƒ½æè¿°  : æ¯”è¾ƒä¸¤ä¸ªmacåœ°å€æ˜¯å¦ç›¸ç­‰
+ * è¾“å…¥å‚æ•°  : puc_mac_addr1: ç¬¬ä¸€ä¸ªmacåœ°å€
+ *             puc_mac_addr2: ç¬¬äºŒä¸ªmacåœ°å€
+ * è¿” å› å€¼  : ä¸ç­‰è¿”å›1 ï¼› ç›¸ç­‰è¿”å›0
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_compare_mac_addr(const unsigned char *puc_mac_addr1, const unsigned char *puc_mac_addr2)
 {
@@ -808,12 +810,12 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_compare_mac_addr(const unsigned char *puc_m
 }
 
 /*
- * º¯ Êı Ãû  : oal_cmp_seq_num
- * ¹¦ÄÜÃèÊö  : ±È½ÏÁ½¸ö½ÓÊÕÃèÊö·ûµÄÖĞ¶ÏË³ĞòºÅµÄ´óĞ¡£¬seq_num1´óÓÚseq_num2·µ»ØÕæ
- * ÊäÈë²ÎÊı  : (1)ÊıÖµ1
- *             (2)ÊıÖµ2
- *             (3)Á½¸öÊıÖµ¼äµÄ×î´ó²îÖµ
- * ·µ »Ø Öµ  : OAL_TRUE»òÕßOAL_FALSE
+ * å‡½ æ•° å  : oal_cmp_seq_num
+ * åŠŸèƒ½æè¿°  : æ¯”è¾ƒä¸¤ä¸ªæ¥æ”¶æè¿°ç¬¦çš„ä¸­æ–­é¡ºåºå·çš„å¤§å°ï¼Œseq_num1å¤§äºseq_num2è¿”å›çœŸ
+ * è¾“å…¥å‚æ•°  : (1)æ•°å€¼1
+ *             (2)æ•°å€¼2
+ *             (3)ä¸¤ä¸ªæ•°å€¼é—´çš„æœ€å¤§å·®å€¼
+ * è¿” å› å€¼  : OAL_TRUEæˆ–è€…OAL_FALSE
  */
 OAL_STATIC OAL_INLINE oal_bool_enum_uint8 oal_cmp_seq_num(oal_uint32 ul_seq_num1,
                                                           oal_uint32 ul_seq_num2,
@@ -828,10 +830,10 @@ OAL_STATIC OAL_INLINE oal_bool_enum_uint8 oal_cmp_seq_num(oal_uint32 ul_seq_num1
 }
 
 /*
- * º¯ Êı Ãû  : oal_strcmp
- * ¹¦ÄÜÃèÊö  : ×Ö·û´®±È½Ï
- * ÊäÈë²ÎÊı  : pc_src: Ô´×Ö·û´®
- *             pc_dst: Ä¿µÄ×Ö·û´®
+ * å‡½ æ•° å  : oal_strcmp
+ * åŠŸèƒ½æè¿°  : å­—ç¬¦ä¸²æ¯”è¾ƒ
+ * è¾“å…¥å‚æ•°  : pc_src: æºå­—ç¬¦ä¸²
+ *             pc_dst: ç›®çš„å­—ç¬¦ä¸²
  */
 OAL_STATIC OAL_INLINE oal_int32 oal_strcmp(const char *pc_src, const char *pc_dst)
 {
@@ -857,8 +859,8 @@ OAL_STATIC OAL_INLINE oal_int32 oal_strcmp(const char *pc_src, const char *pc_ds
 }
 
 /*
- * º¯ Êı Ãû  : oal_strim
- * ¹¦ÄÜÃèÊö  : È¥µô×Ö·û´®¿ªÊ¼Óë½áÎ²µÄ¿Õ¸ñ
+ * å‡½ æ•° å  : oal_strim
+ * åŠŸèƒ½æè¿°  : å»æ‰å­—ç¬¦ä¸²å¼€å§‹ä¸ç»“å°¾çš„ç©ºæ ¼
  */
 OAL_STATIC OAL_INLINE oal_int8 *oal_strim(oal_int8 *pc_s)
 {
@@ -890,8 +892,8 @@ OAL_STATIC OAL_INLINE oal_int8 *oal_strim(oal_int8 *pc_s)
 }
 
 /*
- * º¯ Êı Ãû  : oal_strstr
- * ¹¦ÄÜÃèÊö  : ÔÚpc_s1ÖĞ²éÕÒpc_s2µÚÒ»´Î³öÏÖµÄÎ»ÖÃ
+ * å‡½ æ•° å  : oal_strstr
+ * åŠŸèƒ½æè¿°  : åœ¨pc_s1ä¸­æŸ¥æ‰¾pc_s2ç¬¬ä¸€æ¬¡å‡ºç°çš„ä½ç½®
  */
 OAL_STATIC OAL_INLINE oal_int8 *oal_strstr(oal_int8 *pc_s1, oal_int8 *pc_s2)
 {
@@ -899,8 +901,8 @@ OAL_STATIC OAL_INLINE oal_int8 *oal_strstr(oal_int8 *pc_s1, oal_int8 *pc_s2)
 }
 
 /*
- * º¯ Êı Ãû  : oal_init_lut
- * ¹¦ÄÜÃèÊö  : ³õÊ¼»¯´«ÈëµÄLUT BITMAP±í
+ * å‡½ æ•° å  : oal_init_lut
+ * åŠŸèƒ½æè¿°  : åˆå§‹åŒ–ä¼ å…¥çš„LUT BITMAPè¡¨
  */
 OAL_STATIC OAL_INLINE oal_uint32 oal_init_lut(oal_uint8 *puc_lut_index_table, oal_uint8 uc_bmap_len)
 {
@@ -919,9 +921,9 @@ OAL_STATIC OAL_INLINE oal_uint32 oal_init_lut(oal_uint8 *puc_lut_index_table, oa
 }
 
 /*
- * º¯ Êı Ãû  : oal_get_lut_index
- * ¹¦ÄÜÃèÊö  : ´ÓLUT index bitmap±íÖĞ£¬»ñÈ¡Ò»¸öÃ»ÓĞ±»Ê¹ÓÃµÄË÷Òı£¬Ã»ÓĞÕÒµ½µÄ»°£¬
- *             ·µ»Ø²»¿ÉÓÃµÄË÷Òı±êÊ¶(·Ç¹Ø¼üÂ·¾¶£¬Î´½øĞĞÓÅ»¯£¬ÓĞÊ±¼ä¿ÉÒÔÓÅ»¯)
+ * å‡½ æ•° å  : oal_get_lut_index
+ * åŠŸèƒ½æè¿°  : ä»LUT index bitmapè¡¨ä¸­ï¼Œè·å–ä¸€ä¸ªæ²¡æœ‰è¢«ä½¿ç”¨çš„ç´¢å¼•ï¼Œæ²¡æœ‰æ‰¾åˆ°çš„è¯ï¼Œ
+ *             è¿”å›ä¸å¯ç”¨çš„ç´¢å¼•æ ‡è¯†(éå…³é”®è·¯å¾„ï¼Œæœªè¿›è¡Œä¼˜åŒ–ï¼Œæœ‰æ—¶é—´å¯ä»¥ä¼˜åŒ–)
  */
 OAL_STATIC OAL_INLINE oal_uint8 oal_get_lut_index(oal_uint8 *puc_lut_index_table,
                                                   oal_uint8 uc_bmap_len,
@@ -942,9 +944,9 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_get_lut_index(oal_uint8 *puc_lut_index_table
     for (uc_byte = 0; uc_byte < uc_bmap_len; uc_byte++) {
         uc_temp = puc_lut_index_table[uc_byte];
 
-        for (uc_bit = 0; uc_bit < 8; uc_bit++) {   /* ÒÔÒ»¸öbitÎªµ¥Î»±éÀúÄ³Ò»Î»Îª0 */
+        for (uc_bit = 0; uc_bit < 8; uc_bit++) {   /* ä»¥ä¸€ä¸ªbitä¸ºå•ä½éå†æŸä¸€ä½ä¸º0 */
             if ((uc_temp & (1 << uc_bit)) == 0x0) {
-                us_index = (uc_byte * 8 + uc_bit); /* Ëã³öÎª0µÄbitÎ»µÄÎ»Êı */
+                us_index = (uc_byte * 8 + uc_bit); /* ç®—å‡ºä¸º0çš„bitä½çš„ä½æ•° */
                 if ((us_index < us_start) || (us_index >= us_stop)) {
                     continue;
                 }
@@ -963,8 +965,8 @@ OAL_STATIC OAL_INLINE oal_uint8 oal_get_lut_index(oal_uint8 *puc_lut_index_table
 }
 
 /*
- * º¯ Êı Ãû  : oal_del_lut_index
- * ¹¦ÄÜÃèÊö  : ÔÚLUT index bitmap±íÖĞ£¬É¾³ıÒ»¸öLUT index (×¢:%¿ÉÒÔ×÷ÎªÓÅ»¯Ïî)
+ * å‡½ æ•° å  : oal_del_lut_index
+ * åŠŸèƒ½æè¿°  : åœ¨LUT index bitmapè¡¨ä¸­ï¼Œåˆ é™¤ä¸€ä¸ªLUT index (æ³¨:%å¯ä»¥ä½œä¸ºä¼˜åŒ–é¡¹)
  */
 OAL_STATIC OAL_INLINE oal_void oal_del_lut_index(oal_uint8 *puc_lut_index_table, oal_uint8 uc_idx)
 {
@@ -1037,12 +1039,12 @@ OAL_STATIC OAL_INLINE oal_void oal_reset_lut_index_status(oal_uint8 *puc_lut_idx
 }
 
 /*
- * º¯ Êı Ãû  : oal_get_virt_addr
- * ¹¦ÄÜÃèÊö  : ÎïÀíµØÖ·×ª»¯ÎªĞéÄâµØÖ·
+ * å‡½ æ•° å  : oal_get_virt_addr
+ * åŠŸèƒ½æè¿°  : ç‰©ç†åœ°å€è½¬åŒ–ä¸ºè™šæ‹Ÿåœ°å€
  */
 OAL_STATIC OAL_INLINE oal_uint32 *oal_get_virt_addr(oal_uint32 *pul_phy_addr)
 {
-    /* ¿ÕÖ¸ÕëÎŞĞè×ª»¯ */
+    /* ç©ºæŒ‡é’ˆæ— éœ€è½¬åŒ– */
     if (pul_phy_addr == OAL_PTR_NULL) {
         return pul_phy_addr;
     }
@@ -1054,7 +1056,7 @@ extern oal_int32 oal_dump_stack_str(oal_uint8 *puc_str, oal_uint32 ul_max_size);
 
 OAL_STATIC OAL_INLINE oal_int8 oal_get_real_rssi(oal_int16 s_scaled_rssi)
 {
-    /* ËÄÉáÎåÈë */
+    /* å››èˆäº”å…¥ */
     return OAL_ROUND(s_scaled_rssi, OAL_RSSI_FRACTION_BITS);
 }
 
@@ -1067,22 +1069,22 @@ OAL_STATIC OAL_INLINE oal_void oal_rssi_smooth(oal_int16 *ps_old_rssi, oal_int8 
         return;
     }
 
-    /* ÈôÉÏ±¨µÄÖµ³¬¹ıÁËºÏ·¨·¶Î§£¬Ôò²»½øĞĞÆ½»¬²Ù×÷£¬º¯ÊıÖ±½Ó·µ»Ø */
+    /* è‹¥ä¸ŠæŠ¥çš„å€¼è¶…è¿‡äº†åˆæ³•èŒƒå›´ï¼Œåˆ™ä¸è¿›è¡Œå¹³æ»‘æ“ä½œï¼Œå‡½æ•°ç›´æ¥è¿”å› */
     if (c_new_rssi < OAL_RSSI_SIGNAL_MIN || c_new_rssi > OAL_RSSI_SIGNAL_MAX) {
         return;
     }
 
-    /* ÈôÉÏ±¨µÄÖµÎª0£¬ÔòÊÇÃèÊö·ûÎ´ÌîrssiÖµ,²»½øĞĞÆ½»¬ */
+    /* è‹¥ä¸ŠæŠ¥çš„å€¼ä¸º0ï¼Œåˆ™æ˜¯æè¿°ç¬¦æœªå¡«rssiå€¼,ä¸è¿›è¡Œå¹³æ»‘ */
     if (c_new_rssi == 0) {
         return;
     }
 
-    /* ÅĞ¶ÏÎª³õÊ¼Öµ,Ğ¾Æ¬ÉÏ±¨µÄrssi×÷ÎªÆ½»¬½á¹û */
+    /* åˆ¤æ–­ä¸ºåˆå§‹å€¼,èŠ¯ç‰‡ä¸ŠæŠ¥çš„rssiä½œä¸ºå¹³æ»‘ç»“æœ */
     if (*ps_old_rssi == OAL_RSSI_INIT_MARKER) {
         *ps_old_rssi = (oal_int16)c_new_rssi << OAL_RSSI_FRACTION_BITS;
     }
 
-    /* old_rssiËÄÉáÎåÈëºó¼ÆËãdelta */
+    /* old_rssiå››èˆäº”å…¥åè®¡ç®—delta */
     s_delta = (oal_int16)c_new_rssi - oal_get_real_rssi(*ps_old_rssi);
 
     if (s_delta > OAL_RSSI_MAX_DELTA) {
