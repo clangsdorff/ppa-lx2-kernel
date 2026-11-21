@@ -705,9 +705,14 @@ export CFLAGS_GCOV CFLAGS_KCOV
 
 # Make toolchain changes before including arch/$(SRCARCH)/Makefile to ensure
 # ar/cc/ld-* macros return correct values.
+ifeq ($(ld-name),lld)
+LDFINAL_vmlinux := $(CROSS_COMPILE)ld
+export LDFINAL_vmlinux
+endif
+
 ifdef CONFIG_LTO_CLANG
 ifeq ($(ld-name),lld)
-LDFINAL_vmlinux := $(LD)
+LDFINAL_vmlinux := $(CROSS_COMPILE)ld
 ifdef CONFIG_THINLTO
 LDFLAGS		+= -mllvm -import-instr-limit=5
 endif
