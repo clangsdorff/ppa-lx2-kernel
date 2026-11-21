@@ -663,9 +663,6 @@ static int breakpoint_handler(unsigned long unused, unsigned int esr,
 	struct perf_event *bp, **slots;
 	struct debug_info *debug_info;
 	struct arch_hw_breakpoint_ctrl ctrl;
-#ifdef CONFIG_HAVE_HW_BREAKPOINT_ADDR_MASK
-	struct arch_hw_breakpoint *info;
-#endif
 
 	slots = this_cpu_ptr(bp_on_reg);
 	addr = instruction_pointer(regs);
