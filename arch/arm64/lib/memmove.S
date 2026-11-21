@@ -183,7 +183,7 @@ WEAK(memmove)
 	tst	count, #0x3f
 	b.ne	.Ltail63
 	ret
-SYM_FUNC_END_PI(memmove)
+ENDPIPROC(memmove)
 EXPORT_SYMBOL(memmove)
-SYM_FUNC_END_ALIAS(__memmove)
+ENDPROC(__memmove)
 EXPORT_SYMBOL(__memmove)

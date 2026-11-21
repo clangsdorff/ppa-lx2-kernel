@@ -202,7 +202,7 @@ WEAK(memset)
 	ands	count, count, zva_bits_x
 	b.ne	.Ltail_maybe_long
 	ret
-SYM_FUNC_END_PI(memset)
+ENDPIPROC(memset)
 EXPORT_SYMBOL(memset)
-SYM_FUNC_END_ALIAS(__memset)
+ENDPROC(__memset)
 EXPORT_SYMBOL(__memset)
