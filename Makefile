@@ -7,7 +7,7 @@ export OBB_PRODUCT_NAME := kirin710
 export TARGET_BOARD_PLATFORM := kirin710
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 214
+SUBLEVEL = 215
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -415,7 +415,7 @@ OBJDUMP		= $(CROSS_COMPILE)objdump
 AWK		= awk
 GENKSYMS	= scripts/genksyms/genksyms
 INSTALLKERNEL  := installkernel
-DEPMOD		= /sbin/depmod
+DEPMOD		= depmod
 PERL		= perl
 PYTHON		= python
 CHECK		= sparse
