@@ -40,7 +40,7 @@ static bool irq_is_eligible(struct irq_desc *desc)
 	if (irq_settings_is_per_cpu(desc) || irq_settings_is_per_cpu_devid(desc))
 		return false;
 
-	if (irqd_irq_disabled(data) || irqd_is_set(data, IRQD_NO_BALANCING))
+	if (irqd_irq_disabled(data) || !irqd_can_balance(data))
 		return false;
 
 	if (!chip || !chip->irq_set_affinity)
