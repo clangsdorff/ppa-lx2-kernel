@@ -1650,7 +1650,6 @@ static void handle_port_status(struct xhci_hcd *xhci,
 		bogus_port_status = true;
 		goto cleanup;
 	}
-
 	if (major_revision == 0) {
 		xhci_warn(xhci, "Event for port %u not in "
 				"Extended Capabilities, ignoring.\n",
