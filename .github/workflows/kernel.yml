@@ -10,7 +10,7 @@ on:
           - none
           - thin
           - full
-        default: none
+        default: thin
 
 jobs:
   build:
