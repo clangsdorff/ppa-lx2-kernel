@@ -391,7 +391,7 @@ int ufshcd_pltfrm_probe(struct platform_device *pdev)
 	err = ufshcd_init(hba, mmio_base, irq, timer_irq);
 	if (err) {
 		dev_err(dev, "Initialization failed\n");
-		goto dealloc_host;
+		goto out_disable_rpm;
 	}
 
 #ifndef CONFIG_SCSI_UFS_ENHANCED_INLINE_CRYPTO_V2
@@ -415,8 +415,6 @@ int ufshcd_pltfrm_probe(struct platform_device *pdev)
 out_disable_rpm:
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
-dealloc_host:
-	ufshcd_dealloc_host(hba);
 out:
 	return err;
 }
