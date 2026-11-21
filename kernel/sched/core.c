@@ -3938,10 +3938,11 @@ static noinline void __schedule_bug(struct task_struct *prev)
 		print_ip_sym(preempt_disable_ip);
 		pr_cont("\n");
 	}
-#ifndef CONFIG_HISI_BB_DEBUG
-	if (panic_on_warn)
+#ifdef CONFIG_HISI_BB_DEBUG
+	panic("scheduling while atomic\n");
+#else
+	check_panic_on_warn("scheduling while atomic");
 #endif
-		panic("scheduling while atomic\n");
 
 	dump_stack();
 	add_taint(TAINT_WARN, LOCKDEP_STILL_OK);
