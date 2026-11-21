@@ -583,12 +583,12 @@ static void dw_mci_translate_sglist(struct dw_mci *host, struct mmc_data *data,
 
 			/* Set the OWN bit and disable interrupts for this descriptor */
 			desc->des0 = IDMAC_DES0_OWN | IDMAC_DES0_DIC | IDMAC_DES0_CH;
-			/*ÓÅ»¯ĞŞ¸Ä£¬·ÀÖ¹ÄÚ´æ²»³õÊ¼»¯*/
+			/*ä¼˜åŒ–ä¿®æ”¹ï¼Œé˜²æ­¢å†…å­˜ä¸åˆå§‹åŒ–*/
 			if(desc->des0 & IDMAC_DES0_CH) {
 				desc->des1 = 0;
 			}
 
-			/*ÓÅ»¯ĞŞ¸Ä£¬·ÀÖ¹ÄÚ´æ²»³õÊ¼»¯*/
+			/*ä¼˜åŒ–ä¿®æ”¹ï¼Œé˜²æ­¢å†…å­˜ä¸åˆå§‹åŒ–*/
 			if(desc->des0 & IDMAC_DES0_CH) {
 				desc->des1 = 0;
 			}
@@ -632,12 +632,12 @@ static void dw_mci_translate_sglist(struct dw_mci *host, struct mmc_data *data,
 				/* Set the OWN bit and disable interrupts for this descriptor */
 				desc->des0 = IDMAC_DES0_OWN | IDMAC_DES0_DIC | IDMAC_DES0_CH;
 
-				/*ÓÅ»¯ĞŞ¸Ä£¬·ÀÖ¹ÄÚ´æ²»³õÊ¼»¯*/
+				/*ä¼˜åŒ–ä¿®æ”¹ï¼Œé˜²æ­¢å†…å­˜ä¸åˆå§‹åŒ–*/
 				if(desc->des0 & IDMAC_DES0_CH) {
 				        desc->des2 = 0;
 				}
 
-				/*ÓÅ»¯ĞŞ¸Ä£¬·ÀÖ¹ÄÚ´æ²»³õÊ¼»¯*/
+				/*ä¼˜åŒ–ä¿®æ”¹ï¼Œé˜²æ­¢å†…å­˜ä¸åˆå§‹åŒ–*/
 				if(desc->des0 & IDMAC_DES0_CH) {
 					desc->des2 = 0;
 				}
@@ -711,7 +711,7 @@ static inline int dw_mci_prepare_desc64(struct dw_mci *host,
 			desc->des0 = IDMAC_DES0_OWN | IDMAC_DES0_DIC |
 						IDMAC_DES0_CH;
 
-			/*ÓÅ»¯ĞŞ¸Ä£¬·ÀÖ¹ÄÚ´æ²»³õÊ¼»¯*/
+			/*ä¼˜åŒ–ä¿®æ”¹ï¼Œé˜²æ­¢å†…å­˜ä¸åˆå§‹åŒ–*/
 			if(desc->des0 & IDMAC_DES0_CH) {
                                 desc->des1 = 0;
                         }
@@ -793,7 +793,7 @@ static inline int dw_mci_prepare_desc32(struct dw_mci *host,
 						 IDMAC_DES0_DIC |
 						 IDMAC_DES0_CH);
 
-			/*ÓÅ»¯ĞŞ¸Ä£¬·ÀÖ¹ÄÚ´æ²»³õÊ¼»¯*/
+			/*ä¼˜åŒ–ä¿®æ”¹ï¼Œé˜²æ­¢å†…å­˜ä¸åˆå§‹åŒ–*/
 			if(desc->des0 & IDMAC_DES0_CH) {
 				desc->des1 = 0;
 			}
@@ -1580,7 +1580,7 @@ static void dw_mci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		drv_data->set_ios(slot->host, ios);
 
 	mmc->f_min = DIV_ROUND_UP(slot->host->bus_hz, 510);
-	mmc->f_max = slot->host->bus_hz;/*ÉÏÃæÉèÖÃµÄbus_hz*/
+	mmc->f_max = slot->host->bus_hz;/*ä¸Šé¢è®¾ç½®çš„bus_hz*/
 
 	/* Slot specific timing and width adjustment */
 	dw_mci_setup_bus(slot, false);
