@@ -1484,7 +1484,6 @@ int tcp_fragment(struct sock *sk, struct sk_buff *skb, u32 len,
 		NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPWQUEUETOOBIG);
 		return -ENOMEM;
 	}
-
 	if (skb_unclone(skb, gfp))
 		return -ENOMEM;
 
