@@ -5406,7 +5406,6 @@ static int ufshcd_bkops_ctrl(struct ufs_hba *hba,
 			}
 		}
 	}
-	hba->urgent_bkops_lvl = curr_status;
 out:
 	return err;
 }
