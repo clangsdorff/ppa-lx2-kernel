@@ -104,7 +104,7 @@ int generate_random_data(uint8_t *data, uint32_t size)
 		tloge("Clean the data buffer failed!\n");
 		return -EFAULT;
 	}
-	get_random_bytes_arch((void *)data, size);
+	get_random_bytes((void *)data, size);
 	if (check_random_data(data, size) != 0)
 		return -EFAULT;
 	return 0;
