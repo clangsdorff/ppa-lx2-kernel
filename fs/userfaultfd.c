@@ -373,6 +373,9 @@ int handle_userfault(struct vm_fault *vmf, unsigned long reason)
 
 	BUG_ON(ctx->mm != mm);
 
+	if (ctx->flags & UFFD_USER_MODE_ONLY && !(vmf->flags & FAULT_FLAG_USER))
+		goto out;
+
 	VM_BUG_ON(reason & ~(VM_UFFD_MISSING|VM_UFFD_WP));
 	VM_BUG_ON(!(reason & VM_UFFD_MISSING) ^ !!(reason & VM_UFFD_WP));
 
@@ -1948,7 +1951,7 @@ static struct file *userfaultfd_file_create(int flags)
 	BUILD_BUG_ON(UFFD_NONBLOCK != O_NONBLOCK);
 
 	file = ERR_PTR(-EINVAL);
-	if (flags & ~UFFD_SHARED_FCNTL_FLAGS)
+	if (flags & ~(UFFD_SHARED_FCNTL_FLAGS | UFFD_USER_MODE_ONLY))
 		goto out;
 
 	file = ERR_PTR(-ENOMEM);
