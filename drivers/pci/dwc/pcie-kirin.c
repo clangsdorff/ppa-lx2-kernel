@@ -1024,8 +1024,8 @@ static const struct dw_pcie_ops dw_pcie_ops = {
 	.link_up = kirin_pcie_link_up,
 };
 
-static int __init kirin_add_pcie_port(struct kirin_pcie *pcie,
-				      struct platform_device *pdev)
+static int kirin_add_pcie_port(struct kirin_pcie *pcie,
+			       struct platform_device *pdev)
 {
 	int ret;
 	int index;
