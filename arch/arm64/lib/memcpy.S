@@ -61,6 +61,10 @@ WEAK(memcpy)
 #include "copy_template.S"
 	ret
 ENDPIPROC(memcpy)
-EXPORT_SYMBOL(memcpy)
 ENDPROC(__memcpy)
-EXPORT_SYMBOL(__memcpy)
+
+	.globl memcpy_reg
+ENTRY_NOTAG(memcpy_reg)
+#include "copy_reg.S"
+	ret
+ENDPIPROC(memcpy_reg)
