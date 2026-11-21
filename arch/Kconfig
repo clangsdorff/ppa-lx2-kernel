@@ -694,6 +694,14 @@ config LTO_CLANG
 
 endchoice
 
+config THINLTO
+	bool "Clang ThinLTO (EXPERIMENTAL)"
+	depends on LTO_CLANG
+	default n
+	help
+	  This option enables Clang's ThinLTO, which allows for parallel
+	  optimization and faster incremental builds compared to full LTO.
+
 config CFI
 	bool
 
