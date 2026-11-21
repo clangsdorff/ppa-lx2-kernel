@@ -47,7 +47,7 @@
 */
 
 /*****************************************************************************
-  1 Í·ÎÄ¼ş°üº¬
+  1 å¤´æ–‡ä»¶åŒ…å«
 *****************************************************************************/
 #include "AtCmdPacketProc.h"
 #include "AtDataProc.h"
@@ -56,17 +56,17 @@
 
 
 /*****************************************************************************
-    Ğ­ÒéÕ»´òÓ¡´òµã·½Ê½ÏÂµÄ.CÎÄ¼şºê¶¨Òå
+    åè®®æ ˆæ‰“å°æ‰“ç‚¹æ–¹å¼ä¸‹çš„.Cæ–‡ä»¶å®å®šä¹‰
 *****************************************************************************/
 #define    THIS_FILE_ID                 PS_FILE_ID_AT_CMD_PACKET_PROC_C
 
 /*****************************************************************************
-  2 È«¾Ö±äÁ¿¶¨Òå
+  2 å…¨å±€å˜é‡å®šä¹‰
 *****************************************************************************/
 
 
 /*****************************************************************************
-  3 º¯ÊıÊµÏÖ
+  3 å‡½æ•°å®ç°
 *****************************************************************************/
 
 
@@ -154,14 +154,14 @@ VOS_UINT32 AT_SetChdataPara_AppUser(VOS_UINT8 ucIndex)
 
     pstPsModemCtx = AT_GetModemPsCtxAddrFromClientId(ucIndex);
 
-    /* Ö¸¶¨CIDµÄPDPÈôÒÑ¾­¼¤»î£¬Ôò²»ÔÊĞíÉ¾³ı»òĞŞ¸Ä¸ÃCIDµÄÍ¨µÀÓ³Éä¹ØÏµ£¬Ö±½Ó·µ»ØERROR */
+    /* æŒ‡å®šCIDçš„PDPè‹¥å·²ç»æ¿€æ´»ï¼Œåˆ™ä¸å…è®¸åˆ é™¤æˆ–ä¿®æ”¹è¯¥CIDçš„é€šé“æ˜ å°„å…³ç³»ï¼Œç›´æ¥è¿”å›ERROR */
     if ((VOS_TRUE == pstPsModemCtx->astChannelCfg[ucCid].ulUsed)
       && (VOS_TRUE == pstPsModemCtx->astChannelCfg[ucCid].ulRmNetActFlg))
     {
         return AT_ERROR;
     }
 
-    /* µÚ¶ş¸ö²ÎÊıÎª¿Õ£¬Ôò±íÊ¾É¾³ıÅäÖÃ¹ØÏµ */
+    /* ç¬¬äºŒä¸ªå‚æ•°ä¸ºç©ºï¼Œåˆ™è¡¨ç¤ºåˆ é™¤é…ç½®å…³ç³» */
     if (0 == gastAtParaList[1].usParaLen)
     {
         pstPsModemCtx->astChannelCfg[ucCid].ulUsed     = VOS_FALSE;
@@ -171,26 +171,26 @@ VOS_UINT32 AT_SetChdataPara_AppUser(VOS_UINT8 ucIndex)
 
     enDataChannelId = gastAtParaList[1].ulParaValue;
 
-    /* »ñÈ¡Íø¿¨ID */
+    /* è·å–ç½‘å¡ID */
     pstChDataCfg = AT_PS_GetChDataCfgByChannelId(ucIndex,enDataChannelId);
     if (VOS_NULL_PTR == pstChDataCfg)
     {
         return AT_ERROR;
     }
 
-    /* ²éÕÒÊÇ·ñÓĞ²»Í¬µÄ<CID>ÅäÖÃÁËÏàÍ¬µÄ<enRnicRmNetId> */
+    /* æŸ¥æ‰¾æ˜¯å¦æœ‰ä¸åŒçš„<CID>é…ç½®äº†ç›¸åŒçš„<enRnicRmNetId> */
     for (ucLoop = 1; ucLoop <= TAF_MAX_CID; ucLoop++)
     {
         if ( (ucLoop != ucCid)
           && (VOS_TRUE == pstPsModemCtx->astChannelCfg[ucLoop].ulUsed)
           && (pstChDataCfg->enRnicRmNetId == (RNIC_DEV_ID_ENUM_UINT8)pstPsModemCtx->astChannelCfg[ucLoop].ulRmNetId))
         {
-            /* ²»Í¬µÄ<CID>ÅäÖÃÁËÏàÍ¬µÄ<enRnicRmNetId>£¬Ö±½Ó·µ»ØERROR */
+            /* ä¸åŒçš„<CID>é…ç½®äº†ç›¸åŒçš„<enRnicRmNetId>ï¼Œç›´æ¥è¿”å›ERROR */
             return AT_ERROR;
         }
     }
 
-    /* ÅäÖÃÊı´«Í¨µÀÓ³Éä±í */
+    /* é…ç½®æ•°ä¼ é€šé“æ˜ å°„è¡¨ */
     pstPsModemCtx->astChannelCfg[ucCid].ulUsed    = VOS_TRUE;
     pstPsModemCtx->astChannelCfg[ucCid].ulRmNetId = pstChDataCfg->enRnicRmNetId;
     pstPsModemCtx->astChannelCfg[ucCid].ulIfaceld = pstChDataCfg->enIfaceId;
@@ -211,14 +211,14 @@ VOS_UINT32 AT_SetChdataPara_HsicUser(VOS_UINT8 ucIndex)
 
     pstPsModemCtx = AT_GetModemPsCtxAddrFromClientId(ucIndex);
 
-    /* Ö¸¶¨CIDµÄPDPÈôÒÑ¾­¼¤»î£¬Ôò²»ÔÊĞíÉ¾³ı»òĞŞ¸Ä¸ÃCIDµÄÍ¨µÀÓ³Éä¹ØÏµ£¬Ö±½Ó·µ»ØERROR */
+    /* æŒ‡å®šCIDçš„PDPè‹¥å·²ç»æ¿€æ´»ï¼Œåˆ™ä¸å…è®¸åˆ é™¤æˆ–ä¿®æ”¹è¯¥CIDçš„é€šé“æ˜ å°„å…³ç³»ï¼Œç›´æ¥è¿”å›ERROR */
     if ((VOS_TRUE == pstPsModemCtx->astChannelCfg[ucCid].ulUsed)
       && (VOS_TRUE == pstPsModemCtx->astChannelCfg[ucCid].ulRmNetActFlg))
     {
         return AT_ERROR;
     }
 
-    /* µÚ¶ş¸ö²ÎÊıÎª¿Õ£¬Ôò±íÊ¾É¾³ıÅäÖÃ¹ØÏµ */
+    /* ç¬¬äºŒä¸ªå‚æ•°ä¸ºç©ºï¼Œåˆ™è¡¨ç¤ºåˆ é™¤é…ç½®å…³ç³» */
     if (0 == gastAtParaList[1].usParaLen)
     {
         pstPsModemCtx->astChannelCfg[ucCid].ulUsed     = VOS_FALSE;
@@ -228,7 +228,7 @@ VOS_UINT32 AT_SetChdataPara_HsicUser(VOS_UINT8 ucIndex)
 
     enDataChannelId = gastAtParaList[1].ulParaValue;
 
-    /* µÍÈí½Ó¿Ú·µ»ØÖµĞŞ¸Ä£¬Ö®Ç°·µ»ØPS_TRUEµÄÎªSUPPORT */
+    /* ä½è½¯æ¥å£è¿”å›å€¼ä¿®æ”¹ï¼Œä¹‹å‰è¿”å›PS_TRUEçš„ä¸ºSUPPORT */
     if (BSP_MODULE_SUPPORT == mdrv_misc_support_check(BSP_MODULE_TYPE_HSIC_NCM))
     {
         if (AT_CH_DATA_CHANNEL_ID_1 == enDataChannelId)
@@ -260,19 +260,19 @@ VOS_UINT32 AT_SetChdataPara_HsicUser(VOS_UINT8 ucIndex)
         }
     }
 
-    /* ²éÕÒÊÇ·ñÓĞ²»Í¬µÄ<CID>ÅäÖÃÁËÏàÍ¬µÄ<enUdiDevId> */
+    /* æŸ¥æ‰¾æ˜¯å¦æœ‰ä¸åŒçš„<CID>é…ç½®äº†ç›¸åŒçš„<enUdiDevId> */
     for (ucLoop = 1; ucLoop <= TAF_MAX_CID; ucLoop++)
     {
         if ( (ucLoop != ucCid)
           && (VOS_TRUE == pstPsModemCtx->astChannelCfg[ucLoop].ulUsed)
           && (enUdiDevId == (UDI_DEVICE_ID_E)pstPsModemCtx->astChannelCfg[ucLoop].ulRmNetId))
         {
-            /* ²»Í¬µÄ<CID>ÅäÖÃÁËÏàÍ¬µÄ<enUdiDevId>£¬Ö±½Ó·µ»ØERROR */
+            /* ä¸åŒçš„<CID>é…ç½®äº†ç›¸åŒçš„<enUdiDevId>ï¼Œç›´æ¥è¿”å›ERROR */
             return AT_ERROR;
         }
     }
 
-    /* ÅäÖÃÊı´«Í¨µÀÓ³Éä±í */
+    /* é…ç½®æ•°ä¼ é€šé“æ˜ å°„è¡¨ */
     pstPsModemCtx->astChannelCfg[ucCid].ulUsed     = VOS_TRUE;
     pstPsModemCtx->astChannelCfg[ucCid].ulRmNetId  = enUdiDevId;
 
@@ -284,19 +284,19 @@ VOS_UINT32 AT_SetChdataPara(VOS_UINT8 ucIndex)
 {
     VOS_UINT8                           ucUserIndex;
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¹ı¶à */
+    /* å‚æ•°è¿‡å¤š */
     if (gucAtParaIndex > 2)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* µÚÒ»¸ö²ÎÊıÎª¿Õ */
+    /* ç¬¬ä¸€ä¸ªå‚æ•°ä¸ºç©º */
     if ((0 == gastAtParaList[0].usParaLen))
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -304,7 +304,7 @@ VOS_UINT32 AT_SetChdataPara(VOS_UINT8 ucIndex)
 
     ucUserIndex = ucIndex;
 
-    /* PCUI¿ÚÇÒÒÑÉèÖÃPCUI¿ÚÄ£ÄâNDISDUP²¦ºÅ */
+    /* PCUIå£ä¸”å·²è®¾ç½®PCUIå£æ¨¡æ‹ŸNDISDUPæ‹¨å· */
     if (AT_USBCOM_USER == gastAtClientTab[ucIndex].UserType)
     {
         if (VOS_TRUE == AT_GetPcuiPsCallFlag())
@@ -313,7 +313,7 @@ VOS_UINT32 AT_SetChdataPara(VOS_UINT8 ucIndex)
         }
     }
 
-    /* CTRL¿ÚÇÒÒÑÉèÖÃCTRL¿ÚÄ£ÄâNDISDUP²¦ºÅ */
+    /* CTRLå£ä¸”å·²è®¾ç½®CTRLå£æ¨¡æ‹ŸNDISDUPæ‹¨å· */
     if (AT_CTR_USER == gastAtClientTab[ucIndex].UserType)
     {
         if (VOS_TRUE == AT_GetCtrlPsCallFlag())
@@ -322,7 +322,7 @@ VOS_UINT32 AT_SetChdataPara(VOS_UINT8 ucIndex)
         }
     }
 
-    /* PCUI2¿ÚÇÒÒÑÉèÖÃPCUI2¿ÚÄ£ÄâNDISDUP²¦ºÅ */
+    /* PCUI2å£ä¸”å·²è®¾ç½®PCUI2å£æ¨¡æ‹ŸNDISDUPæ‹¨å· */
     if (AT_PCUI2_USER == gastAtClientTab[ucIndex].UserType)
     {
         if (VOS_TRUE == AT_GetPcui2PsCallFlag())
@@ -331,13 +331,13 @@ VOS_UINT32 AT_SetChdataPara(VOS_UINT8 ucIndex)
         }
     }
 
-    /* HSICºÍMUXÍ¨µÀµÄ´¦Àí */
+    /* HSICå’ŒMUXé€šé“çš„å¤„ç† */
     if (VOS_TRUE == AT_IsHsicOrMuxUser(ucUserIndex))
     {
         return AT_SetChdataPara_HsicUser(ucUserIndex);
     }
 
-    /* APPÍ¨µÀµÄ´¦Àí */
+    /* APPé€šé“çš„å¤„ç† */
     if (VOS_TRUE == AT_CheckAppUser(ucUserIndex))
     {
         return AT_SetChdataPara_AppUser(ucUserIndex);
@@ -361,7 +361,7 @@ VOS_UINT32 AT_QryChdataPara_AppUser(TAF_UINT8 ucIndex)
 
     pstPsModemCtx = AT_GetModemPsCtxAddrFromClientId(ucIndex);
 
-    /* Êä³ö½á¹û */
+    /* è¾“å‡ºç»“æœ */
     for (ucLoop = 1; ucLoop <= TAF_MAX_CID; ucLoop++)
     {
         if ( (VOS_TRUE == pstPsModemCtx->astChannelCfg[ucLoop].ulUsed)
@@ -411,7 +411,7 @@ VOS_UINT32 AT_QryChdataPara_HsicUser(TAF_UINT8 ucIndex)
 
     pstPsModemCtx = AT_GetModemPsCtxAddrFromClientId(ucIndex);
 
-    /* Êä³ö½á¹û */
+    /* è¾“å‡ºç»“æœ */
     for (ucLoop = 1; ucLoop <= TAF_MAX_CID; ucLoop++)
     {
         if ( (VOS_TRUE == pstPsModemCtx->astChannelCfg[ucLoop].ulUsed)
@@ -462,7 +462,7 @@ VOS_UINT32 AT_QryChdataPara(TAF_UINT8 ucIndex)
 {
     VOS_UINT8                           ucUserId;
 
-    /*ÃüÁî×´Ì¬ÀàĞÍ¼ì²é*/
+    /*å‘½ä»¤çŠ¶æ€ç±»å‹æ£€æŸ¥*/
     if (AT_CMD_OPT_READ_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_ERROR;
@@ -470,7 +470,7 @@ VOS_UINT32 AT_QryChdataPara(TAF_UINT8 ucIndex)
 
     ucUserId = ucIndex;
 
-    /* PCUI¿ÚÇÒÒÑÉèÖÃPCUI¿ÚÄ£ÄâNDISDUP²¦ºÅ */
+    /* PCUIå£ä¸”å·²è®¾ç½®PCUIå£æ¨¡æ‹ŸNDISDUPæ‹¨å· */
     if (AT_USBCOM_USER == gastAtClientTab[ucIndex].UserType)
     {
         if (VOS_TRUE == AT_GetPcuiPsCallFlag())
@@ -479,7 +479,7 @@ VOS_UINT32 AT_QryChdataPara(TAF_UINT8 ucIndex)
         }
     }
 
-    /* CTRL¿ÚÇÒÒÑÉèÖÃCTRL¿ÚÄ£ÄâNDISDUP²¦ºÅ */
+    /* CTRLå£ä¸”å·²è®¾ç½®CTRLå£æ¨¡æ‹ŸNDISDUPæ‹¨å· */
     if (AT_CTR_USER == gastAtClientTab[ucIndex].UserType)
     {
         if (VOS_TRUE == AT_GetCtrlPsCallFlag())
@@ -488,7 +488,7 @@ VOS_UINT32 AT_QryChdataPara(TAF_UINT8 ucIndex)
         }
     }
 
-    /* PCUI2¿ÚÇÒÒÑÉèÖÃPCUI2¿ÚÄ£ÄâNDISDUP²¦ºÅ */
+    /* PCUI2å£ä¸”å·²è®¾ç½®PCUI2å£æ¨¡æ‹ŸNDISDUPæ‹¨å· */
     if (AT_PCUI2_USER == gastAtClientTab[ucIndex].UserType)
     {
         if (VOS_TRUE == AT_GetPcui2PsCallFlag())
@@ -497,13 +497,13 @@ VOS_UINT32 AT_QryChdataPara(TAF_UINT8 ucIndex)
         }
     }
 
-    /* HSICºÍMUXÍ¨µÀµÄ´¦Àí */
+    /* HSICå’ŒMUXé€šé“çš„å¤„ç† */
     if (VOS_TRUE == AT_IsHsicOrMuxUser(ucUserId))
     {
         return AT_QryChdataPara_HsicUser(ucUserId);
     }
 
-    /* APPÍ¨µÀµÄ´¦Àí */
+    /* APPé€šé“çš„å¤„ç† */
     if (VOS_TRUE == AT_CheckAppUser(ucUserId))
     {
         return AT_QryChdataPara_AppUser(ucUserId);
@@ -515,7 +515,7 @@ VOS_UINT32 AT_QryChdataPara(TAF_UINT8 ucIndex)
 
 VOS_UINT32 AT_TestChdataPara(VOS_UINT8 ucIndex)
 {
-    /* Í¨µÀ¼ì²é */
+    /* é€šé“æ£€æŸ¥ */
     if (VOS_FALSE == AT_IsApPort(ucIndex))
     {
         return AT_ERROR;
@@ -559,13 +559,13 @@ VOS_UINT32 AT_PS_ReportDhcp(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+    /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
     if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
     {
         AT_WARN_LOG("AT_PS_ReportDhcp: ERROR : AT_GetDisplayRate Error!");
     }
 
-    /* »ñÈ¡DHCP²ÎÊı(ÍøÂçĞò) */
+    /* è·å–DHCPå‚æ•°(ç½‘ç»œåº) */
     AT_GetDhcpPara(&stDhcpConfig, &pstCallEntity->stIpv4DhcpInfo);
 
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength,"%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
@@ -586,19 +586,19 @@ VOS_UINT32 AT_PS_ReportDhcp(VOS_UINT8 ucIndex)
 
 VOS_UINT32 At_SetDhcpPara(VOS_UINT8 ucIndex)
 {
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¹ı¶à */
+    /* å‚æ•°è¿‡å¤š */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²éÑ¯Ö¸¶¨CIDµÄÊµÌåPDPÉÏÏÂÎÄ */
+    /* æŸ¥è¯¢æŒ‡å®šCIDçš„å®ä½“PDPä¸Šä¸‹æ–‡ */
     return AT_PS_ReportDhcp(ucIndex);
 }
 
@@ -627,13 +627,13 @@ VOS_UINT32 At_QryDhcpPara_AppUser(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+    /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
     if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
     {
         AT_WARN_LOG("At_QryDhcpPara_AppUser: ERROR : AT_GetDisplayRate Error!");
     }
 
-    /* »ñÈ¡DHCP²ÎÊı(ÍøÂçĞò) */
+    /* è·å–DHCPå‚æ•°(ç½‘ç»œåº) */
     AT_GetDhcpPara(&stDhcpConfig, &pstAppPdpEntity->stIpv4Dhcp);
 
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength,"%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
@@ -675,13 +675,13 @@ VOS_UINT32 At_QryDhcpPara_NdisUser(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+    /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
     if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
     {
         AT_ERR_LOG("At_QryDhcpPara_NdisUser : ERROR : AT_GetDisplayRate Error!");
     }
 
-    /* »ñÈ¡DHCP²ÎÊı(ÍøÂçĞò) */
+    /* è·å–DHCPå‚æ•°(ç½‘ç»œåº) */
     AT_NdisGetDhcpPara(&stDhcpConfig);
 
     usLength =  (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr, "%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
@@ -714,7 +714,7 @@ VOS_UINT32 At_QryDhcpPara_UsbComUser(VOS_UINT8 ucIndex)
     ulRst    = AT_ERROR;
     TAF_MEM_SET_S(&stSpeed, sizeof(stSpeed), 0x00, (VOS_SIZE_T)(sizeof(AT_DISPLAY_RATE_STRU)));
 
-    /* Ä¿Ç°DHCPµÄ²éÑ¯Ö»Ö§³Ö1-11µÄcid */
+    /* ç›®å‰DHCPçš„æŸ¥è¯¢åªæ”¯æŒ1-11çš„cid */
     for ( i = 1; i <= TAF_MAX_CID_NV; i++ )
     {
         ucCallId = AT_PS_TransCidToCallId(ucIndex, (VOS_UINT8)i);
@@ -731,13 +731,13 @@ VOS_UINT32 At_QryDhcpPara_UsbComUser(VOS_UINT8 ucIndex)
             continue;
         }
 
-        /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+        /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
         if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
         {
             AT_WARN_LOG("At_QryDhcpPara_UsbComUser: ERROR : AT_GetDisplayRate Error!");
         }
 
-        /* »ñÈ¡DHCP²ÎÊı(ÍøÂçĞò) */
+        /* è·å–DHCPå‚æ•°(ç½‘ç»œåº) */
         AT_GetDhcpPara(&stDhcpConfig, &pstCallEntity->stIpv4DhcpInfo);
 
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength,"%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
@@ -874,7 +874,7 @@ VOS_UINT32 AT_PS_ReportDhcpv6(TAF_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+    /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
     if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
     {
         AT_WARN_LOG("AT_PS_ReportDhcpv6: ERROR : AT_GetDisplayRate Error!");
@@ -882,44 +882,44 @@ VOS_UINT32 AT_PS_ReportDhcpv6(TAF_UINT8 ucIndex)
 
     usLength  = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr, "%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
 
-    /* ÌîĞ´IPV6µØÖ· */
+    /* å¡«å†™IPV6åœ°å€ */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       pstCallEntity->stIpv6DhcpInfo.aucIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
 
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, "%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6ÑÚÂë, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™IPV6æ©ç , è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6Íø¹Ø, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™IPV6ç½‘å…³, è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´DHCP IPV6, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™DHCP IPV6, è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6 Primary DNS */
+    /* å¡«å†™IPV6 Primary DNS */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       pstCallEntity->stIpv6DhcpInfo.aucIpv6PrimDNS,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6 Secondary DNS */
+    /* å¡«å†™IPV6 Secondary DNS */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       pstCallEntity->stIpv6DhcpInfo.aucIpv6SecDNS,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´MAX RX/TX Rate */
+    /* å¡«å†™MAX RX/TX Rate */
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucDlSpeed);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucUlSpeed);
 
@@ -931,19 +931,19 @@ VOS_UINT32 AT_PS_ReportDhcpv6(TAF_UINT8 ucIndex)
 
 VOS_UINT32 AT_SetDhcpv6Para(VOS_UINT8 ucIndex)
 {
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı´íÎó */
+    /* å‚æ•°é”™è¯¯ */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²éÑ¯Ö¸¶¨CIDµÄÊµÌåPDPÉÏÏÂÎÄ */
+    /* æŸ¥è¯¢æŒ‡å®šCIDçš„å®ä½“PDPä¸Šä¸‹æ–‡ */
     return AT_PS_ReportDhcpv6(ucIndex);
 }
 
@@ -976,7 +976,7 @@ VOS_UINT32 AT_QryDhcpV6Para_AppUser(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+    /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
     if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
     {
         AT_WARN_LOG("AT_QryDhcpV6Para_AppUser:WARNING: AT_GetDisplayRate Error!");
@@ -984,43 +984,43 @@ VOS_UINT32 AT_QryDhcpV6Para_AppUser(VOS_UINT8 ucIndex)
 
     usLength  = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr, "%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
 
-    /* ÌîĞ´IPV6µØÖ· */
+    /* å¡«å†™IPV6åœ°å€ */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       pstAppPdpEntity->stIpv6Dhcp.aucIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, "%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6ÑÚÂë, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™IPV6æ©ç , è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6Íø¹Ø, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™IPV6ç½‘å…³, è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´DHCP IPV6, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™DHCP IPV6, è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6 Primary DNS */
+    /* å¡«å†™IPV6 Primary DNS */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       pstAppPdpEntity->stIpv6Dhcp.aucIpv6PrimDNS,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6 Secondary DNS */
+    /* å¡«å†™IPV6 Secondary DNS */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       pstAppPdpEntity->stIpv6Dhcp.aucIpv6SecDNS,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´MAX RX/TX Rate */
+    /* å¡«å†™MAX RX/TX Rate */
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucDlSpeed);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucUlSpeed);
 
@@ -1056,7 +1056,7 @@ VOS_UINT32 AT_QryDhcpV6Para_NdisUser(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+    /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
     if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
     {
         AT_ERR_LOG("AT_QryDhcpV6Para_NdisUser : ERROR : AT_GetDisplayRate Error!");
@@ -1064,43 +1064,43 @@ VOS_UINT32 AT_QryDhcpV6Para_NdisUser(VOS_UINT8 ucIndex)
 
     usLength  = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr, "%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
 
-    /* ÌîĞ´IPV6µØÖ· */
+    /* å¡«å†™IPV6åœ°å€ */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       g_stAtNdisDhcpPara.stIpv6Dhcp.aucIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, "%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6ÑÚÂë, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™IPV6æ©ç , è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6Íø¹Ø, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™IPV6ç½‘å…³, è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´DHCP IPV6, ¸Ã×Ö¶ÎÌîÈ«0 */
+    /* å¡«å†™DHCP IPV6, è¯¥å­—æ®µå¡«å…¨0 */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       aucInvalidIpv6Addr,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6 Primary DNS */
+    /* å¡«å†™IPV6 Primary DNS */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       g_stAtNdisDhcpPara.stIpv6Dhcp.aucIpv6PrimDNS,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s",  aucIpv6AddrStr);
 
-    /* ÌîĞ´IPV6 Secondary DNS */
+    /* å¡«å†™IPV6 Secondary DNS */
     AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                       g_stAtNdisDhcpPara.stIpv6Dhcp.aucIpv6SecDNS,
                                       TAF_IPV6_STR_RFC2373_TOKENS);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s",  aucIpv6AddrStr);
 
-    /* ÌîĞ´MAX RX/TX Rate */
+    /* å¡«å†™MAX RX/TX Rate */
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucDlSpeed);
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucUlSpeed);
 
@@ -1128,7 +1128,7 @@ VOS_UINT32 At_QryDhcpV6Para_UsbComUser(TAF_UINT8 ucIndex)
     TAF_MEM_SET_S(aucIpv6AddrStr, TAF_MAX_IPV6_ADDR_COLON_STR_LEN, 0x00, TAF_MAX_IPV6_ADDR_COLON_STR_LEN);
     TAF_MEM_SET_S(aucInvalidIpv6Addr, TAF_IPV6_ADDR_LEN, 0x00, TAF_IPV6_ADDR_LEN);
 
-    /* Ä¿Ç°DHCPµÄ²éÑ¯Ö»Ö§³Ö1-11µÄcid */
+    /* ç›®å‰DHCPçš„æŸ¥è¯¢åªæ”¯æŒ1-11çš„cid */
     for ( i = 1; i <= TAF_MAX_CID_NV; i++ )
     {
 
@@ -1151,7 +1151,7 @@ VOS_UINT32 At_QryDhcpV6Para_UsbComUser(TAF_UINT8 ucIndex)
             continue;
         }
 
-        /* »ñÈ¡½ÓÈëÀíÂÛ´ø¿í*/
+        /* è·å–æ¥å…¥ç†è®ºå¸¦å®½*/
         if (VOS_ERR == AT_GetDisplayRate(ucIndex, &stSpeed))
         {
             AT_WARN_LOG("At_QryDhcpV6Para_UsbComUser: ERROR : AT_GetDisplayRate Error!");
@@ -1159,44 +1159,44 @@ VOS_UINT32 At_QryDhcpV6Para_UsbComUser(TAF_UINT8 ucIndex)
 
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr, "%s: ",g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
 
-        /* ÌîĞ´IPV6µØÖ· */
+        /* å¡«å†™IPV6åœ°å€ */
         AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                           pstCallEntity->stIpv6DhcpInfo.aucIpv6Addr,
                                           TAF_IPV6_STR_RFC2373_TOKENS);
 
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, "%s", aucIpv6AddrStr);
 
-        /* ÌîĞ´IPV6ÑÚÂë, ¸Ã×Ö¶ÎÌîÈ«0 */
+        /* å¡«å†™IPV6æ©ç , è¯¥å­—æ®µå¡«å…¨0 */
         AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                           aucInvalidIpv6Addr,
                                           TAF_IPV6_STR_RFC2373_TOKENS);
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-        /* ÌîĞ´IPV6Íø¹Ø, ¸Ã×Ö¶ÎÌîÈ«0 */
+        /* å¡«å†™IPV6ç½‘å…³, è¯¥å­—æ®µå¡«å…¨0 */
         AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                           aucInvalidIpv6Addr,
                                           TAF_IPV6_STR_RFC2373_TOKENS);
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-        /* ÌîĞ´DHCP IPV6, ¸Ã×Ö¶ÎÌîÈ«0 */
+        /* å¡«å†™DHCP IPV6, è¯¥å­—æ®µå¡«å…¨0 */
         AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                           aucInvalidIpv6Addr,
                                           TAF_IPV6_STR_RFC2373_TOKENS);
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-        /* ÌîĞ´IPV6 Primary DNS */
+        /* å¡«å†™IPV6 Primary DNS */
         AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                           pstCallEntity->stIpv6DhcpInfo.aucIpv6PrimDNS,
                                           TAF_IPV6_STR_RFC2373_TOKENS);
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-        /* ÌîĞ´IPV6 Secondary DNS */
+        /* å¡«å†™IPV6 Secondary DNS */
         AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
                                           pstCallEntity->stIpv6DhcpInfo.aucIpv6SecDNS,
                                           TAF_IPV6_STR_RFC2373_TOKENS);
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
 
-        /* ÌîĞ´MAX RX/TX Rate */
+        /* å¡«å†™MAX RX/TX Rate */
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucDlSpeed);
         usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", stSpeed.ucUlSpeed);
 
@@ -1287,7 +1287,7 @@ VOS_UINT32 AT_PS_ReportApraInfo(TAF_UINT8 ucIndex)
                                        "%s: ",
                                        g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
 
-    /* ÌîĞ´MTU */
+    /* å¡«å†™MTU */
     if (VOS_FALSE == pstCallEntity->stIpv6RaInfo.bitOpMtuSize)
     {
         ulMtuSize = 0;
@@ -1301,7 +1301,7 @@ VOS_UINT32 AT_PS_ReportApraInfo(TAF_UINT8 ucIndex)
                                        (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength,
                                        "%d",
                                        ulMtuSize);
-    /* ÌîĞ´Prefix */
+    /* å¡«å†™Prefix */
     if (VOS_FALSE == pstCallEntity->stIpv6RaInfo.bitOpPrefixAddr)
     {
         ulPrefixBitLen = 0;
@@ -1323,7 +1323,7 @@ VOS_UINT32 AT_PS_ReportApraInfo(TAF_UINT8 ucIndex)
                                        aucIpv6AddrStr,
                                        ulPrefixBitLen);
 
-    /* ÌîĞ´Preferred Lifetime */
+    /* å¡«å†™Preferred Lifetime */
     if (VOS_FALSE == pstCallEntity->stIpv6RaInfo.bitOpPreferredLifetime)
     {
         ulPreferredLifetime = 0;
@@ -1347,7 +1347,7 @@ VOS_UINT32 AT_PS_ReportApraInfo(TAF_UINT8 ucIndex)
         ulValidLifetime = pstCallEntity->stIpv6RaInfo.ulValidLifetime;
     }
 
-    /* ÌîĞ´Valid Lifetime */
+    /* å¡«å†™Valid Lifetime */
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
                                        (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength,
                                        ",%u",
@@ -1366,13 +1366,13 @@ VOS_UINT32 AT_SetApRaInfoPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı´íÎó */
+    /* å‚æ•°é”™è¯¯ */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²éÑ¯Ö¸¶¨CIDµÄÊµÌåPDPÉÏÏÂÎÄ */
+    /* æŸ¥è¯¢æŒ‡å®šCIDçš„å®ä½“PDPä¸Šä¸‹æ–‡ */
     return AT_PS_ReportApraInfo(ucIndex);
 }
 
@@ -1415,7 +1415,7 @@ VOS_UINT32 AT_QryApRaInfoPara(VOS_UINT8 ucIndex)
                                        "%s: ",
                                        g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
 
-    /* ÌîĞ´MTU */
+    /* å¡«å†™MTU */
     if (VOS_FALSE == pstAppRaInfoAddr->bitOpMtuSize)
     {
         ulMtuSize = 0;
@@ -1429,7 +1429,7 @@ VOS_UINT32 AT_QryApRaInfoPara(VOS_UINT8 ucIndex)
                                        (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength,
                                        "%d",
                                        ulMtuSize);
-    /* ÌîĞ´Prefix */
+    /* å¡«å†™Prefix */
     if (VOS_FALSE == pstAppRaInfoAddr->bitOpPrefixAddr)
     {
         ulPrefixBitLen = 0;
@@ -1451,7 +1451,7 @@ VOS_UINT32 AT_QryApRaInfoPara(VOS_UINT8 ucIndex)
                                        aucIpv6AddrStr,
                                        ulPrefixBitLen);
 
-    /* ÌîĞ´Preferred Lifetime */
+    /* å¡«å†™Preferred Lifetime */
     if (VOS_FALSE == pstAppRaInfoAddr->bitOpPreferredLifetime)
     {
         ulPreferredLifetime = 0;
@@ -1475,7 +1475,7 @@ VOS_UINT32 AT_QryApRaInfoPara(VOS_UINT8 ucIndex)
         ulValidLifetime = pstAppRaInfoAddr->ulValidLifetime;
     }
 
-    /* ÌîĞ´Valid Lifetime */
+    /* å¡«å†™Valid Lifetime */
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
                                        (VOS_CHAR*)pgucAtSndCodeAddr, (VOS_CHAR*)pgucAtSndCodeAddr + usLength,
                                        ",%u",
@@ -1512,7 +1512,7 @@ VOS_UINT32 AT_PS_ReportLanAddr(VOS_UINT8 ucIndex)
     usLength = 0;
     TAF_MEM_SET_S(aucInvalidIpv6Addr, sizeof(aucInvalidIpv6Addr), 0x00, sizeof(aucInvalidIpv6Addr));
 
-    /* ¸ù¾İcid»ñÈ¡¶ÔÓ¦µÄcallid */
+    /* æ ¹æ®cidè·å–å¯¹åº”çš„callid */
     ucCallId = AT_PS_TransCidToCallId(ucIndex, (VOS_UINT8)gastAtParaList[0].ulParaValue);
 
     if (VOS_TRUE != AT_PS_IsCallIdValid(ucIndex, ucCallId))
@@ -1523,7 +1523,7 @@ VOS_UINT32 AT_PS_ReportLanAddr(VOS_UINT8 ucIndex)
 
     pstPsCallEntity = AT_PS_GetCallEntity(ucIndex, ucCallId);
 
-    /* µ±Ç°Î´¼¤»î£¬Ö±½Ó·µ»Øerror */
+    /* å½“å‰æœªæ¿€æ´»ï¼Œç›´æ¥è¿”å›error */
     if (AT_PDP_STATE_ACTED != pstPsCallEntity->enIpv6State)
     {
         AT_WARN_LOG("AT_PS_ReportLanAddr: PDP is not actived in cellular.");
@@ -1573,13 +1573,13 @@ VOS_UINT32 AT_SetApLanAddrPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı´íÎó */
+    /* å‚æ•°é”™è¯¯ */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²éÑ¯Ö¸¶¨CIDµÄÊµÌåPDPÉÏÏÂÎÄ */
+    /* æŸ¥è¯¢æŒ‡å®šCIDçš„å®ä½“PDPä¸Šä¸‹æ–‡ */
     return AT_PS_ReportLanAddr(ucIndex);
 }
 
@@ -1728,13 +1728,13 @@ VOS_UINT32 AT_PS_ReportIPv6TempAddr(VOS_UINT8 ucIndex)
 
 VOS_UINT32 AT_SetIPv6TempAddrPara(VOS_UINT8 ucIndex)
 {
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı´íÎó */
+    /* å‚æ•°é”™è¯¯ */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -1762,37 +1762,37 @@ VOS_UINT32 AT_SetCgpiafPara(VOS_UINT8 ucIndex)
 
     pstCommPsCtx    = AT_GetCommPsCtxAddr();
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¹ı¶à */
+    /* å‚æ•°è¿‡å¤š */
     if (4 < gucAtParaIndex)
     {
         return AT_TOO_MANY_PARA;
     }
 
-    /* ²ÎÊı<IPv6_AddressFormat> */
+    /* å‚æ•°<IPv6_AddressFormat> */
     if (0 != gastAtParaList[0].usParaLen)
     {
         pstCommPsCtx->bitOpIpv6AddrFormat = (VOS_UINT8)gastAtParaList[0].ulParaValue;
     }
 
-    /* ²ÎÊı<IPv6_SubnetNotation> */
+    /* å‚æ•°<IPv6_SubnetNotation> */
     if (0 != gastAtParaList[1].usParaLen)
     {
         pstCommPsCtx->bitOpIpv6SubnetNotation = (VOS_UINT8)gastAtParaList[1].ulParaValue;
     }
 
-    /* ²ÎÊı<IPv6_LeadingZeros> */
+    /* å‚æ•°<IPv6_LeadingZeros> */
     if (0 != gastAtParaList[2].usParaLen)
     {
         pstCommPsCtx->bitOpIpv6LeadingZeros = (VOS_UINT8)gastAtParaList[2].ulParaValue;
     }
 
-    /* ²ÎÊı<IPv6_CompressZeros> */
+    /* å‚æ•°<IPv6_CompressZeros> */
     if (0 != gastAtParaList[2].usParaLen)
     {
         pstCommPsCtx->bitOpIpv6CompressZeros = (VOS_UINT8)gastAtParaList[3].ulParaValue;
@@ -1808,13 +1808,13 @@ VOS_UINT32 AT_QryCgpiafPara(VOS_UINT8 ucIndex)
 
     pstCommPsCtx    = AT_GetCommPsCtxAddr();
 
-    /* ÃüÁî²Ù×÷ÀàĞÍ¼ì²é */
+    /* å‘½ä»¤æ“ä½œç±»å‹æ£€æŸ¥ */
     if (AT_CMD_OPT_READ_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* Êä³ö²éÑ¯½á¹û */
+    /* è¾“å‡ºæŸ¥è¯¢ç»“æœ */
     /* +CGPIAF: <IPv6_AddressFormat>,<IPv6_SubnetNotation>,<IPv6_LeadingZeros>,<IPv6_CompressZeros> */
     gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
                                       (VOS_CHAR *)pgucAtSndCodeAddr,
@@ -1845,7 +1845,7 @@ VOS_UINT32 AT_PS_ReportConnSt(VOS_UINT8 ucIndex)
 
     usLength = 0;
 
-    /* ¸ù¾İcid»ñÈ¡¶ÔÓ¦µÄcallid */
+    /* æ ¹æ®cidè·å–å¯¹åº”çš„callid */
     ucCallId = AT_PS_TransCidToCallId(ucIndex, (VOS_UINT8)gastAtParaList[0].ulParaValue);
 
     if (VOS_TRUE != AT_PS_IsCallIdValid(ucIndex, ucCallId))
@@ -1944,13 +1944,13 @@ VOS_UINT32  At_SetApConnStPara(
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı´íÎó */
+    /* å‚æ•°é”™è¯¯ */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²éÑ¯Ö¸¶¨CIDµÄÊµÌåPDPÉÏÏÂÎÄ */
+    /* æŸ¥è¯¢æŒ‡å®šCIDçš„å®ä½“PDPä¸Šä¸‹æ–‡ */
     return AT_PS_ReportConnSt(ucIndex);
 }
 
@@ -2096,13 +2096,13 @@ VOS_UINT32 At_SetApThroughputPara(
     AT_MODEM_PS_CTX_STRU               *pstPsModemCtx = VOS_NULL_PTR;
     VOS_UINT8                           ucCid;
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¹ı¶à */
+    /* å‚æ•°è¿‡å¤š */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -2110,7 +2110,7 @@ VOS_UINT32 At_SetApThroughputPara(
 
     ucCid = (VOS_UINT8)gastAtParaList[0].ulParaValue;
 
-    /* »ñÈ¡¶ÔÓ¦µÄRNICÍø¿¨ */
+    /* è·å–å¯¹åº”çš„RNICç½‘å¡ */
     pstPsModemCtx = AT_GetModemPsCtxAddrFromClientId(ucIndex);
 
     enRnicRmNetId = (RNIC_DEV_ID_ENUM_UINT8)pstPsModemCtx->astChannelCfg[ucCid].ulRmNetId;
@@ -2120,7 +2120,7 @@ VOS_UINT32 At_SetApThroughputPara(
         return AT_ERROR;
     }
 
-    /* ÉêÇëID_AT_RNIC_DSFLOW_INDÏûÏ¢ */
+    /* ç”³è¯·ID_AT_RNIC_DSFLOW_INDæ¶ˆæ¯ */
     pstMsg = (AT_RNIC_DSFLOW_IND_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(
                             WUEPS_PID_AT,
                             sizeof(AT_RNIC_DSFLOW_IND_STRU));
@@ -2130,20 +2130,20 @@ VOS_UINT32 At_SetApThroughputPara(
         return AT_ERROR;
     }
 
-    /* ³õÊ¼»¯ÏûÏ¢ */
+    /* åˆå§‹åŒ–æ¶ˆæ¯ */
     TAF_MEM_SET_S((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                (VOS_SIZE_T)(sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH),
                0x00,
                (VOS_SIZE_T)(sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
-    /* ÌîĞ´ÏûÏ¢Í· */
+    /* å¡«å†™æ¶ˆæ¯å¤´ */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
     pstMsg->ulReceiverPid   = ACPU_PID_RNIC;
     pstMsg->ulMsgId         = ID_AT_RNIC_DSFLOW_IND;
     pstMsg->usClientId      = gastAtClientTab[ucIndex].usClientId;
     pstMsg->enRnicRmNetId   = enRnicRmNetId;
 
-    /* ·¢ID_AT_RNIC_DSFLOW_INDÏûÏ¢¸øRNIC»ñÈ¡µ±Ç°µÄÁ÷ËÙ */
+    /* å‘ID_AT_RNIC_DSFLOW_INDæ¶ˆæ¯ç»™RNICè·å–å½“å‰çš„æµé€Ÿ */
     if (VOS_OK == PS_SEND_MSG(WUEPS_PID_AT, pstMsg))
     {
         gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_APTHROUGH_PUT_READ;
@@ -2163,7 +2163,7 @@ VOS_UINT32 At_QryApThroughputPara(
 {
     AT_RNIC_DSFLOW_IND_STRU            *pstMsg;
 
-    /* ÉêÇëID_AT_RNIC_DSFLOW_INDÏûÏ¢ */
+    /* ç”³è¯·ID_AT_RNIC_DSFLOW_INDæ¶ˆæ¯ */
     pstMsg = (AT_RNIC_DSFLOW_IND_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(
                             WUEPS_PID_AT,
                             sizeof(AT_RNIC_DSFLOW_IND_STRU));
@@ -2173,20 +2173,20 @@ VOS_UINT32 At_QryApThroughputPara(
         return AT_ERROR;
     }
 
-    /* ³õÊ¼»¯ÏûÏ¢ */
+    /* åˆå§‹åŒ–æ¶ˆæ¯ */
     TAF_MEM_SET_S((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                (VOS_SIZE_T)(sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH),
                0x00,
                (VOS_SIZE_T)(sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
-    /* ÌîĞ´ÏûÏ¢Í· */
+    /* å¡«å†™æ¶ˆæ¯å¤´ */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
     pstMsg->ulReceiverPid   = ACPU_PID_RNIC;
     pstMsg->ulMsgId         = ID_AT_RNIC_DSFLOW_IND;
     pstMsg->usClientId      = gastAtClientTab[ucIndex].usClientId;
     pstMsg->enRnicRmNetId   = RNIC_DEV_ID_RMNET0;
 
-    /* ·¢ID_AT_RNIC_DSFLOW_INDÏûÏ¢¸øRNIC»ñÈ¡µ±Ç°µÄÁ÷ËÙ */
+    /* å‘ID_AT_RNIC_DSFLOW_INDæ¶ˆæ¯ç»™RNICè·å–å½“å‰çš„æµé€Ÿ */
     if (VOS_OK == PS_SEND_MSG(WUEPS_PID_AT, pstMsg))
     {
         gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_APTHROUGH_PUT_READ;
@@ -2224,15 +2224,15 @@ VOS_UINT32 AT_SetApEndPppPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /*Ä£ÄâÀ­µ×DTRĞÅºÅ*/
+    /*æ¨¡æ‹Ÿæ‹‰åº•DTRä¿¡å·*/
     TAF_MEM_SET_S(&stMscStru, sizeof(stMscStru), 0x00, sizeof(stMscStru));
     stMscStru.OP_Dtr = 1;
     stMscStru.ucDtr  = 0;
 
-    /* HSIC MODEMË÷ÒıºÅ */
+    /* HSIC MODEMç´¢å¼•å· */
     ucActIndex  = AT_CLIENT_TAB_HSIC_MODEM_INDEX;
 
-    /*MODEMÁ´Â·ºÅ */
+    /*MODEMé“¾è·¯å· */
     ucDlci      = AT_MODEM_USER_DLCI;
 
     At_ModemMscInd(ucActIndex, ucDlci, &stMscStru);
@@ -2248,13 +2248,13 @@ VOS_UINT32 AT_SetApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
 {
     TAF_APDSFLOW_RPT_CFG_STRU           stRptCfg;
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ÃüÁî²ÎÊı¸öÊı¼ì²é */
+    /* å‘½ä»¤å‚æ•°ä¸ªæ•°æ£€æŸ¥ */
     if ((gucAtParaIndex < 1) || (gucAtParaIndex > 4))
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -2266,7 +2266,7 @@ VOS_UINT32 AT_SetApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ÉèÖÃ<enable> */
+    /* è®¾ç½®<enable> */
     stRptCfg.ulRptEnabled = gastAtParaList[0].ulParaValue;
 
     if (VOS_TRUE == stRptCfg.ulRptEnabled)
@@ -2298,7 +2298,7 @@ VOS_UINT32 AT_SetApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
         stRptCfg.ulFluxThreshold = 0;
     }
 
-    /* Ö´ĞĞÃüÁî²Ù×÷ */
+    /* æ‰§è¡Œå‘½ä»¤æ“ä½œ */
     if (VOS_OK != TAF_PS_SetApDsFlowRptCfg(WUEPS_PID_AT,
                                            AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                            0,
@@ -2307,17 +2307,17 @@ VOS_UINT32 AT_SetApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_APDSFLOWRPTCFG_SET;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
 
 VOS_UINT32 AT_QryApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
 {
-    /* Ö´ĞĞÃüÁî²Ù×÷ */
+    /* æ‰§è¡Œå‘½ä»¤æ“ä½œ */
     if (VOS_OK != TAF_PS_GetApDsFlowRptCfg(WUEPS_PID_AT,
                                            AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                            0))
@@ -2325,10 +2325,10 @@ VOS_UINT32 AT_QryApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_APDSFLOWRPTCFG_QRY;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
@@ -2339,13 +2339,13 @@ VOS_UINT32 AT_SetDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
 
     TAF_MEM_SET_S(&stWriteNvCfg, sizeof(stWriteNvCfg), 0x00, sizeof(TAF_DSFLOW_NV_WRITE_CFG_STRU));
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ÃüÁî²ÎÊı¸öÊı¼ì²é */
+    /* å‘½ä»¤å‚æ•°ä¸ªæ•°æ£€æŸ¥ */
     if (gucAtParaIndex > 2)
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -2363,10 +2363,10 @@ VOS_UINT32 AT_SetDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* »ñÈ¡<enable> */
+    /* è·å–<enable> */
     stWriteNvCfg.ucEnabled          = (VOS_UINT8)gastAtParaList[0].ulParaValue;
 
-    /* »ñÈ¡<interval> */
+    /* è·å–<interval> */
     if (gucAtParaIndex > 1)
     {
         if (0 != gastAtParaList[1].usParaLen)
@@ -2392,7 +2392,7 @@ VOS_UINT32 AT_SetDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* Ö´ĞĞÃüÁî²Ù×÷ */
+    /* æ‰§è¡Œå‘½ä»¤æ“ä½œ */
     if (VOS_OK != TAF_PS_SetDsFlowNvWriteCfg(WUEPS_PID_AT,
                                              AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                              0,
@@ -2401,17 +2401,17 @@ VOS_UINT32 AT_SetDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_DSFLOWNVWRCFG_SET;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
 
 VOS_UINT32 AT_QryDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
 {
-    /* Ö´ĞĞÃüÁî²Ù×÷ */
+    /* æ‰§è¡Œå‘½ä»¤æ“ä½œ */
     if (VOS_OK != TAF_PS_GetDsFlowNvWriteCfg(WUEPS_PID_AT,
                                              AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                              0))
@@ -2419,10 +2419,10 @@ VOS_UINT32 AT_QryDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_DSFLOWNVWRCFG_QRY;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
@@ -2432,13 +2432,13 @@ VOS_UINT32 AT_SetImsPdpCfg(VOS_UINT8 ucIndex)
 {
     TAF_IMS_PDP_CFG_STRU                stImsPdpCfg;
 
-    /* ²ÎÊı¹ı¶à */
+    /* å‚æ•°è¿‡å¤š */
     if (gucAtParaIndex != 2)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if ((0 == gastAtParaList[0].usParaLen)
      || (0 == gastAtParaList[1].usParaLen))
     {
@@ -2447,11 +2447,11 @@ VOS_UINT32 AT_SetImsPdpCfg(VOS_UINT8 ucIndex)
 
     TAF_MEM_SET_S(&stImsPdpCfg, sizeof(stImsPdpCfg), 0x00, sizeof(stImsPdpCfg));
 
-    /* ²ÎÊı¸³Öµ */
+    /* å‚æ•°èµ‹å€¼ */
     stImsPdpCfg.ucCid           = (VOS_UINT8)gastAtParaList[0].ulParaValue;
     stImsPdpCfg.ucImsFlag       = (VOS_UINT8)gastAtParaList[1].ulParaValue;
 
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
+    /* å‘é€è·¨æ ¸æ¶ˆæ¯ */
     if ( VOS_OK != TAF_PS_SetImsPdpCfg(WUEPS_PID_AT,
                                        AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                        0,
@@ -2460,10 +2460,10 @@ VOS_UINT32 AT_SetImsPdpCfg(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_IMSPDPCFG_SET;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 #endif
@@ -2472,19 +2472,19 @@ VOS_UINT32 AT_SetImsPdpCfg(VOS_UINT8 ucIndex)
 VOS_UINT32 AT_SetMipPara(VOS_UINT8 ucIndex)
 {
 
-    /* ²ÎÊı´íÎó */
+    /* å‚æ•°é”™è¯¯ */
     if (gucAtParaIndex != 1)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (0 == gastAtParaList[0].usParaLen)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
+    /* å‘é€è·¨æ ¸æ¶ˆæ¯ */
     if ( VOS_OK != TAF_PS_SetMipMode(WUEPS_PID_AT,
                                      AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                      0,
@@ -2493,10 +2493,10 @@ VOS_UINT32 AT_SetMipPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_CMIP_SET;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
@@ -2504,7 +2504,7 @@ VOS_UINT32 AT_SetMipPara(VOS_UINT8 ucIndex)
 VOS_UINT32 AT_QryMipPara(VOS_UINT8 ucIndex)
 {
 
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
+    /* å‘é€è·¨æ ¸æ¶ˆæ¯ */
     if ( VOS_OK != TAF_PS_GetMipMode(WUEPS_PID_AT,
                                      AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                      0) )
@@ -2512,10 +2512,10 @@ VOS_UINT32 AT_QryMipPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_CMIP_QRY;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
@@ -2529,25 +2529,25 @@ VOS_UINT32 AT_SetVzwApnePara(VOS_UINT8 ucIndex)
     TAF_MEM_SET_S(&stVzwapneInfo, sizeof(stVzwapneInfo), 0, sizeof(TAF_PS_VZWAPNE_INFO_STRU));
     ucIsCustomCmd = VOS_FALSE;
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* +VZWAPNEÃüÁî±ê¼Ç */
+    /* +VZWAPNEå‘½ä»¤æ ‡è®° */
     if (AT_CMD_VZWAPNE == g_stParseContext[ucIndex].pstCmdElement->ulCmdIndex)
     {
         ucIsCustomCmd = VOS_TRUE;
     }
 
-    /* ÉèÖÃ<wapn>/<cid> */
+    /* è®¾ç½®<wapn>/<cid> */
     stVzwapneInfo.ucCid     = (VOS_UINT8)gastAtParaList[0].ulParaValue;
 
-    /* ÉèÖÃ<apncl> */
+    /* è®¾ç½®<apncl> */
     stVzwapneInfo.ucClass   = (VOS_UINT8)gastAtParaList[1].ulParaValue;
 
-    /* ÉèÖÃ<apnni> */
+    /* è®¾ç½®<apnni> */
     if (gastAtParaList[2].usParaLen > TAF_MAX_APN_LEN)
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -2555,7 +2555,7 @@ VOS_UINT32 AT_SetVzwApnePara(VOS_UINT8 ucIndex)
 
     if (0 != gastAtParaList[2].usParaLen)
     {
-        /* ¼ì²é */
+        /* æ£€æŸ¥ */
         if ( VOS_OK != AT_CheckApnFormat(gastAtParaList[2].aucPara,
                                          gastAtParaList[2].usParaLen) )
         {
@@ -2569,16 +2569,16 @@ VOS_UINT32 AT_SetVzwApnePara(VOS_UINT8 ucIndex)
                       gastAtParaList[2].usParaLen);
     }
 
-    /* ÉèÖÃ<apntype> */
+    /* è®¾ç½®<apntype> */
     stVzwapneInfo.enIpType  = (VOS_UINT8)gastAtParaList[3].ulParaValue + 1;
 
-    /* ÉèÖÃ<apned> */
+    /* è®¾ç½®<apned> */
     stVzwapneInfo.ucEnable  = (VOS_UINT8)gastAtParaList[5].ulParaValue;
 
-    /* ÉèÖÃ<apntime> */
+    /* è®¾ç½®<apntime> */
     stVzwapneInfo.usInactiveTimer  = (VOS_UINT8)gastAtParaList[6].ulParaValue;
 
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
+    /* å‘é€è·¨æ ¸æ¶ˆæ¯ */
     if (VOS_OK != TAF_PS_SetVzwApneInfo(WUEPS_PID_AT,
                                         AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                         gastAtClientTab[ucIndex].opId,
@@ -2588,52 +2588,23 @@ VOS_UINT32 AT_SetVzwApnePara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_VZWAPNE_SET;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
 
 VOS_UINT32 AT_QryVzwApnePara(VOS_UINT8 ucIndex)
 {
-    VOS_UINT8                           ucIsCustomCmd;
-
-    ucIsCustomCmd = VOS_FALSE;
-
-    /* ²ÎÊı¼ì²é */
-    if (AT_CMD_OPT_READ_CMD != g_stATParseCmd.ucCmdOptType)
-    {
-        return AT_CME_INCORRECT_PARAMETERS;
-    }
-
-    /* +VZWAPNEÃüÁî±ê¼Ç */
-    if (AT_CMD_VZWAPNE == g_stParseContext[ucIndex].pstCmdElement->ulCmdIndex)
-    {
-        ucIsCustomCmd = VOS_TRUE;
-    }
-
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
-    if (VOS_OK != TAF_PS_GetVzwApneInfo(WUEPS_PID_AT,
-                                        AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
-                                        gastAtClientTab[ucIndex].opId,
-                                        ucIsCustomCmd))
-    {
-        return AT_ERROR;
-    }
-
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
-    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_VZWAPNE_QRY;
-
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
-    return AT_WAIT_ASYNC_RETURN;
+    return AT_ERROR;
 }
 
 
 VOS_UINT32 AT_TestVzwApnePara(VOS_UINT8 ucIndex)
 {
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_TEST_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_ERROR;
@@ -2660,7 +2631,7 @@ VOS_UINT32 AT_SetCgerepPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¹ı¶à */
+    /* å‚æ•°è¿‡å¤š */
     if (gucAtParaIndex > 2)
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -2704,7 +2675,7 @@ VOS_UINT32 AT_QryCgerepPara(VOS_UINT8 ucIndex)
 
     pstNetCtx = AT_GetModemNetCtxAddrFromClientId(ucIndex);
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_READ_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_ERROR;
@@ -2736,7 +2707,7 @@ VOS_UINT32 AT_SetCindPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¹ı¶à */
+    /* å‚æ•°è¿‡å¤š */
     if (1 < gucAtParaIndex)
     {
         return AT_CME_INCORRECT_PARAMETERS;
@@ -2747,7 +2718,7 @@ VOS_UINT32 AT_SetCindPara(VOS_UINT8 ucIndex)
         return AT_OK;
     }
 
-    /* +CIND=[<ind>] Ä¿Ç°Ö»Ö§³ÖsignalµÄÉèÖÃ */
+    /* +CIND=[<ind>] ç›®å‰åªæ”¯æŒsignalçš„è®¾ç½® */
     if (0 != gastAtParaList[0].usParaLen)
     {
         pstNetCtx->ucCerssiReportType = (AT_CERSSI_REPORT_TYPE_ENUM_UINT8)gastAtParaList[0].ulParaValue;
@@ -2778,13 +2749,13 @@ VOS_UINT32 AT_QryCindPara(VOS_UINT8 ucIndex)
 
     pstNetCtx = AT_GetModemNetCtxAddrFromClientId(ucIndex);
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_READ_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_ERROR;
     }
 
-    /* +CIND: <ind> Ä¿Ç°Ö»Ö§³ÖsignalµÄ²éÑ¯ */
+    /* +CIND: <ind> ç›®å‰åªæ”¯æŒsignalçš„æŸ¥è¯¢ */
     gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
                                                    (VOS_CHAR *)pgucAtSndCodeAddr,
                                                    (VOS_CHAR *)pgucAtSndCodeAddr,
@@ -2799,7 +2770,7 @@ VOS_UINT32 AT_QryCindPara(VOS_UINT8 ucIndex)
 
 VOS_UINT32 AT_TestCindPara(VOS_UINT8 ucIndex)
 {
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_TEST_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_ERROR;
@@ -2819,14 +2790,14 @@ VOS_UINT32 AT_SetDataSwitchStatus( VOS_UINT8 ucIndex )
 {
     VOS_UINT8                           ucDataSwitchAT;
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         AT_WARN_LOG("AT_SetDataSwitchStatus: NOT AT_CMD_OPT_SET_PARA_CMD!");
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¸öÊı²»ÕıÈ· */
+    /* å‚æ•°ä¸ªæ•°ä¸æ­£ç¡® */
     if (1 != gucAtParaIndex)
     {
         AT_WARN_LOG("AT_SetDataSwitchStatus: para num is not equal 1!");
@@ -2842,7 +2813,7 @@ VOS_UINT32 AT_SetDataSwitchStatus( VOS_UINT8 ucIndex )
 
     ucDataSwitchAT=(VOS_UINT8)gastAtParaList[0].ulParaValue;
 
-    /* ¸øTAF APS·¢ËÍÍ¨ÖªÏûÏ¢ */
+    /* ç»™TAF APSå‘é€é€šçŸ¥æ¶ˆæ¯ */
     if (VOS_OK != TAF_PS_Set_DataSwitchStatus(WUEPS_PID_AT,
                                               AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                               0,
@@ -2860,14 +2831,14 @@ VOS_UINT32 AT_SetDataRoamSwitchStatus( VOS_UINT8 ucIndex )
 {
     VOS_UINT8                           ucDataRoamSwitchAT;
 
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         AT_WARN_LOG("AT_SetDataRoamSwitchStatus: NOT AT_CMD_OPT_SET_PARA_CMD!");
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊı¸öÊı²»ÕıÈ· */
+    /* å‚æ•°ä¸ªæ•°ä¸æ­£ç¡® */
     if (1 != gucAtParaIndex)
     {
         AT_WARN_LOG("AT_SetDataRoamSwitchStatus: para num is not equal 1!");
@@ -2883,7 +2854,7 @@ VOS_UINT32 AT_SetDataRoamSwitchStatus( VOS_UINT8 ucIndex )
 
     ucDataRoamSwitchAT=(VOS_UINT8)gastAtParaList[0].ulParaValue;
 
-    /* ¸øTAF APS·¢ËÍÍ¨ÖªÏûÏ¢ */
+    /* ç»™TAF APSå‘é€é€šçŸ¥æ¶ˆæ¯ */
     if (VOS_OK != TAF_PS_Set_DataRoamSwitchStatus(WUEPS_PID_AT,
                                                   AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                                   0,
@@ -2902,7 +2873,7 @@ VOS_UINT32 AT_SetDataRoamSwitchStatus( VOS_UINT8 ucIndex )
 
 VOS_UINT32 AT_QryDataSwitchStatus(  VOS_UINT8 ucIndex )
 {
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
+    /* å‘é€è·¨æ ¸æ¶ˆæ¯ */
     if ( VOS_OK != TAF_PS_Get_DataSwitchStatus(WUEPS_PID_AT,
                                                AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                                0))
@@ -2910,10 +2881,10 @@ VOS_UINT32 AT_QryDataSwitchStatus(  VOS_UINT8 ucIndex )
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_DATASWITCH_QRY;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
@@ -2921,7 +2892,7 @@ VOS_UINT32 AT_QryDataSwitchStatus(  VOS_UINT8 ucIndex )
 
 VOS_UINT32 AT_QryDataRoamSwitchStatus(  VOS_UINT8 ucIndex )
 {
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
+    /* å‘é€è·¨æ ¸æ¶ˆæ¯ */
     if ( VOS_OK != TAF_PS_Get_DataRoamSwitchStatus(WUEPS_PID_AT,
                                                    AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                                    0))
@@ -2929,10 +2900,10 @@ VOS_UINT32 AT_QryDataRoamSwitchStatus(  VOS_UINT8 ucIndex )
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_DATAROAMSWITCH_QRY;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
@@ -2943,19 +2914,19 @@ VOS_UINT32 AT_SetApnThrotInfoPara(VOS_UINT8 ucIndex)
 
     TAF_MEM_SET_S(&stApnThrotInfo, sizeof(TAF_PS_APN_THROT_INFO_STRU), 0, sizeof(TAF_PS_APN_THROT_INFO_STRU));
 
-    /* Ö¸ÁîÀàĞÍ¼ì²é */
+    /* æŒ‡ä»¤ç±»å‹æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊıÊıÄ¿´íÎó */
+    /* å‚æ•°æ•°ç›®é”™è¯¯ */
     if (5 != gucAtParaIndex)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊıÎª¿Õ */
+    /* å‚æ•°ä¸ºç©º */
     if ( (0 == gastAtParaList[0].usParaLen)
       || (0 == gastAtParaList[1].usParaLen)
       || (0 == gastAtParaList[2].usParaLen)
@@ -2965,20 +2936,20 @@ VOS_UINT32 AT_SetApnThrotInfoPara(VOS_UINT8 ucIndex)
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* CIDÓëApnClassType ±ØĞëÒ»Ò»¶ÔÓ¦ */
+    /* CIDä¸ApnClassType å¿…é¡»ä¸€ä¸€å¯¹åº” */
     if (gastAtParaList[0].ulParaValue != gastAtParaList[1].ulParaValue)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ÉèÖÃ²ÎÊı */
+    /* è®¾ç½®å‚æ•° */
     stApnThrotInfo.ucCid               = (VOS_UINT8)gastAtParaList[0].ulParaValue;
     stApnThrotInfo.ucApnClassType      = (VOS_UINT8)gastAtParaList[1].ulParaValue;
     stApnThrotInfo.ulWaitTime          = gastAtParaList[2].ulParaValue;
     stApnThrotInfo.ulPdnMaxConnTime    = gastAtParaList[3].ulParaValue;
     stApnThrotInfo.ulPdnMaxConnCount   = gastAtParaList[4].ulParaValue;
 
-    /* ·¢ËÍ¿çºËÏûÏ¢ */
+    /* å‘é€è·¨æ ¸æ¶ˆæ¯ */
     if (VOS_OK != TAF_PS_SetApnThrotInfo(WUEPS_PID_AT,
                                          AT_PS_BuildExClientId(gastAtClientTab[ucIndex].usClientId),
                                          gastAtClientTab[ucIndex].opId,
@@ -2987,10 +2958,10 @@ VOS_UINT32 AT_SetApnThrotInfoPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ÉèÖÃµ±Ç°²Ù×÷ÀàĞÍ */
+    /* è®¾ç½®å½“å‰æ“ä½œç±»å‹ */
     gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_APN_THROT_INFO_SET;
 
-    /* ·µ»ØÃüÁî´¦Àí¹ÒÆğ×´Ì¬ */
+    /* è¿”å›å‘½ä»¤å¤„ç†æŒ‚èµ·çŠ¶æ€ */
     return AT_WAIT_ASYNC_RETURN;
 }
 
@@ -2999,19 +2970,19 @@ VOS_UINT32 At_SetUsbTetherInfo(VOS_UINT8 ucIndex)
 {
     AT_RNIC_USB_TETHER_INFO_IND_STRU   *pstMsg;
 
-    /* Ö¸ÁîÀàĞÍ¼ì²é */
+    /* æŒ‡ä»¤ç±»å‹æ£€æŸ¥ */
     if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊıÊıÄ¿´íÎó */
+    /* å‚æ•°æ•°ç›®é”™è¯¯ */
     if (2 != gucAtParaIndex)
     {
         return AT_CME_INCORRECT_PARAMETERS;
     }
 
-    /* ²ÎÊıÎª¿Õ */
+    /* å‚æ•°ä¸ºç©º */
     if ((0 == gastAtParaList[0].usParaLen)
      || (0 == gastAtParaList[1].usParaLen)
      || (RNIC_RMNET_NAME_MAX_LEN < gastAtParaList[1].usParaLen))
@@ -3029,16 +3000,16 @@ VOS_UINT32 At_SetUsbTetherInfo(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    /* ³õÊ¼»¯ÏûÏ¢Ìå */
+    /* åˆå§‹åŒ–æ¶ˆæ¯ä½“ */
     TAF_MEM_SET_S((VOS_INT8 *)pstMsg + VOS_MSG_HEAD_LENGTH,
                   (VOS_SIZE_T)sizeof(AT_RNIC_USB_TETHER_INFO_IND_STRU) - VOS_MSG_HEAD_LENGTH,
                   0x00,
                   (VOS_SIZE_T)sizeof(AT_RNIC_USB_TETHER_INFO_IND_STRU) - VOS_MSG_HEAD_LENGTH);
 
-    /* ÌîĞ´ÏûÏ¢Í·ºÍÏûÏ¢ID */
+    /* å¡«å†™æ¶ˆæ¯å¤´å’Œæ¶ˆæ¯ID */
     AT_CFG_MSG_HDR( pstMsg, ACPU_PID_RNIC, ID_AT_RNIC_USB_TETHER_INFO_IND );
 
-    /* ÌîĞ´ÏûÏ¢Ìå */
+    /* å¡«å†™æ¶ˆæ¯ä½“ */
     pstMsg->enTetherConnStat = (VOS_UINT8)gastAtParaList[0].ulParaValue;
     TAF_MEM_CPY_S(pstMsg->aucRmnetName, RNIC_RMNET_NAME_MAX_LEN, gastAtParaList[1].aucPara, gastAtParaList[1].usParaLen);
 
@@ -3054,7 +3025,7 @@ VOS_UINT32 At_SetUsbTetherInfo(VOS_UINT8 ucIndex)
 
 VOS_UINT32 At_TestUsbTetherInfo(VOS_UINT8 ucIndex)
 {
-    /* ²ÎÊı¼ì²é */
+    /* å‚æ•°æ£€æŸ¥ */
     if (AT_CMD_OPT_TEST_CMD != g_stATParseCmd.ucCmdOptType)
     {
         return AT_ERROR;
