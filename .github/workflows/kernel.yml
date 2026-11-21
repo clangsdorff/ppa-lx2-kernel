@@ -11,6 +11,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
 
     steps:
       - name: Checkout
@@ -40,8 +43,9 @@ jobs:
             "https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/android-10.0.0_r41.tar.gz" \
             | tar -xz -C "$HOME/ppa-tc/aarch64-linux-android-4.9"
 
-      - name: Cache ccache
-        uses: actions/cache@v6
+      - name: Restore ccache
+        id: ccache-restore
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ccache
           key: ccache-lto-${{ inputs.lto }}-${{ github.sha }}
@@ -107,6 +111,26 @@ jobs:
           make "${MAKE_ARGS[@]}" -j"$(nproc)"
           ccache -s
           ls -lh "$OUT/arch/arm64/boot/Image.gz"
+
+      - name: Save ccache
+        if: steps.ccache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/ccache
+          key: ccache-lto-${{ inputs.lto }}-${{ github.sha }}
+
+      - name: Delete old ccache
+        if: steps.ccache-restore.outputs.cache-hit != 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LTO: ${{ inputs.lto }}
+        run: |
+          PREFIX="ccache-lto-${LTO}-"
+          NEW_KEY="${PREFIX}${GITHUB_SHA}"
+          for id in $(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/caches?key=${PREFIX}" --jq ".actions_caches[] | select(.key != \"${NEW_KEY}\") | .id"); do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/caches/${id}" || true
+          done
 
       - name: Repack boot image
         env:
