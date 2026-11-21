@@ -743,6 +743,12 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, address-of-packed-member)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, attribute-alias)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, misleading-indentation)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, tautological-overlap-compare)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, sometimes-uninitialized)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, implicit-fallthrough)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, unaligned-access)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, bitwise-instead-of-logical)
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS   += -Os
