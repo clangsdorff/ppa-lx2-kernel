@@ -2460,7 +2460,6 @@ struct zs_pool *zs_create_pool(const char *name)
 #ifdef CONFIG_COMPACTION
 	init_waitqueue_head(&pool->migration_wait);
 #endif
-
 	if (create_cache(pool))
 		goto err;
 
