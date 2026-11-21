@@ -198,12 +198,12 @@ int send_calibrate_data_to_mcu(int tag, uint32_t subcmd, const void *data, int l
 
 /*******************************************************************************
 Function:	write_gsensor_offset_to_nv
-Description:  ½«tempÊý¾ÝÐ´ÈëNV ÏîÖÐ
-Data Accessed:  ÎÞ
-Data Updated:   ÎÞ
-Input:        g-sensor Ð£×¼Öµ
-Output:         ÎÞ
-Return:         ³É¹¦»òÕßÊ§°ÜÐÅÏ¢: 0->³É¹¦, -1->Ê§°Ü
+Description:  å°†tempæ•°æ®å†™å…¥NV é¡¹ä¸­
+Data Accessed:  æ— 
+Data Updated:   æ— 
+Input:        g-sensor æ ¡å‡†å€¼
+Output:         æ— 
+Return:         æˆåŠŸæˆ–è€…å¤±è´¥ä¿¡æ¯: 0->æˆåŠŸ, -1->å¤±è´¥
 *******************************************************************************/
 int write_gsensor_offset_to_nv(char *temp, int length)
 {
@@ -229,12 +229,12 @@ int write_gsensor_offset_to_nv(char *temp, int length)
 
 /*******************************************************************************
 Function:	send_gsensor_calibrate_data_to_mcu
-Description:   ¶ÁÈ¡NVÏîÖÐµÄgsensor Ð£×¼Êý¾Ý£¬²¢·¢ËÍ¸ømcu ²à
-Data Accessed:  ÎÞ
-Data Updated:   ÎÞ
-Input:         ÎÞ
-Output:         ÎÞ
-Return:         ³É¹¦»òÕßÊ§°ÜÐÅÏ¢: 0->³É¹¦, -1->Ê§°Ü
+Description:   è¯»å–NVé¡¹ä¸­çš„gsensor æ ¡å‡†æ•°æ®ï¼Œå¹¶å‘é€ç»™mcu ä¾§
+Data Accessed:  æ— 
+Data Updated:   æ— 
+Input:         æ— 
+Output:         æ— 
+Return:         æˆåŠŸæˆ–è€…å¤±è´¥ä¿¡æ¯: 0->æˆåŠŸ, -1->å¤±è´¥
 *******************************************************************************/
 int send_gsensor_calibrate_data_to_mcu(void)
 {
@@ -744,7 +744,7 @@ int combo_bus_trans(struct sensor_combo_cfg *p_cfg, uint8_t *tx, uint32_t tx_len
 	pkg_ap.wr_buf            = ((pkt_header_t*)pkt_combo_trans + 1);
 	pkg_ap.wr_len            = (int)(cmd_wd_len - sizeof(pkt_combo_trans->hd));
 
-	hwlog_info("%s: tag %d cmd %d data=%d, tx_len=%d,rx_len=%d\n",
+	hwlog_debug("%s: tag %d cmd %d data=%d, tx_len=%d,rx_len=%d\n",
 		__func__, pkg_ap.tag, pkg_ap.cmd, p_cfg->data, tx_len, rx_len);
 
 	ret = write_customize_cmd(&pkg_ap, &pkg_mcu, true);
