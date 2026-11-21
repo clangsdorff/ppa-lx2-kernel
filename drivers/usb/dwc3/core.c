@@ -934,7 +934,7 @@ int dwc3_core_init(struct dwc3 *dwc, int in_atomic)
 		ret = dwc3_core_ulpi_init(dwc);
 		if (ret) {
 			if (ret == -ETIMEDOUT) {
-				dwc3_core_soft_reset(dwc);
+				dwc3_core_soft_reset(dwc, in_atomic);
 				ret = -EPROBE_DEFER;
 			}
 			goto err0;

@@ -699,10 +699,8 @@ static int rndis_reset_response(struct rndis_params *params,
 
 	pr_info("%s\n", __func__);
 	/* drain the response queue */
-	spin_lock(&params->resp_lock);
 	while ((xbuf = rndis_get_next_response(params, &length)))
 		rndis_free_response(params, xbuf);
-	spin_unlock(&params->resp_lock);
 
 	r = rndis_add_response(params, sizeof(rndis_reset_cmplt_type));
 	if (!r)
@@ -791,11 +789,9 @@ void rndis_uninit(struct rndis_params *params)
 		return;
 	params->state = RNDIS_UNINITIALIZED;
 
-	spin_lock(&params->resp_lock);
 	/* drain the response queue */
 	while ((buf = rndis_get_next_response(params, &length)))
 		rndis_free_response(params, buf);
-	spin_unlock(&params->resp_lock);
 }
 EXPORT_SYMBOL_GPL(rndis_uninit);
 
