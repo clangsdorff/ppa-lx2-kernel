@@ -638,7 +638,7 @@ static int sil_hdr3_prime = 1;
 module_param(sil_hdr3_prime, int, 0644);
 static int sil_frame_w36 = 1;
 module_param(sil_frame_w36, int, 0644);
-static int sil_frame_rows_per_xfer = 2;
+static int sil_frame_rows_per_xfer = 1;
 module_param(sil_frame_rows_per_xfer, int, 0644);
 static int sil_frame_row_bytes = 32;
 module_param(sil_frame_row_bytes, int, 0644);
@@ -757,7 +757,6 @@ static int sil_frame_row_read(union fp_spi_ctrl ctrl, u32 row, u32 n)
 static int sil_frame_fetch(union fp_spi_ctrl ctrl, u32 row)
 {
 	u32 n = min_t(u32, sil_fw_n, SIL_FRAME_ROWS - row);
-	u32 i;
 	int r;
 
 	r = sil_frame_row_read(ctrl, row, n);
@@ -766,12 +765,8 @@ static int sil_frame_fetch(union fp_spi_ctrl ctrl, u32 row)
 
 	pr_warn_ratelimited("%s: %u row read failed at row %u, single rows\n",
 			    __func__, n, row);
-	for (i = 0; i < n; i++) {
-		r = sil_frame_row_read(ctrl, row + i, 1);
-		if (r)
-			break;
-	}
-	return r;
+	sil_fw_n = 1;
+	return sil_frame_row_read(ctrl, row, 1);
 }
 
 static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
