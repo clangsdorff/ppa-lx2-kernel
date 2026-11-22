@@ -640,8 +640,6 @@ static int sil_frame_w36 = 1;
 module_param(sil_frame_w36, int, 0644);
 static int sil_frame_rows_per_xfer = 1;
 module_param(sil_frame_rows_per_xfer, int, 0644);
-static int sil_frame_row_bytes = 32;
-module_param(sil_frame_row_bytes, int, 0644);
 static int sil_frame_stats;
 module_param(sil_frame_stats, int, 0644);
 
@@ -649,6 +647,7 @@ module_param(sil_frame_stats, int, 0644);
 #define SIL_FRAME_OUT_W		36
 #define SIL_FRAME_ROWS		160
 #define SIL_FW_BUF_LEN		128
+#define SIL_FW_MAX_ROWS		(((SIL_FW_BUF_LEN - SIL_FRAME_SRC_W) / SIL_FRAME_OUT_W) + 1)
 #define SIL_FRAME_OUT_LEN	(SIL_FRAME_OUT_W * SIL_FRAME_ROWS)
 #define SIL_REG_PAGE		0xf0
 #define SIL_WIN_PAGE		(0xff080150 >> 7)
@@ -663,7 +662,6 @@ static int sil_fw_state;
 static u32 sil_fw_off;
 static u32 sil_fw_row0;
 static u32 sil_fw_nrows;
-static u32 sil_fw_w = SIL_FRAME_SRC_W;
 static u32 sil_fw_n = 1;
 static u32 sil_fw_ipc;
 static ktime_t sil_fw_t0;
@@ -736,18 +734,17 @@ static int sil_spi_tx(union fp_spi_ctrl ctrl, u8 *tx, u32 len)
 }
 
 /*
- * Frame read: blob expects 36 byte rows. With sil_frame_row_bytes 32 the
- * sensor rows are 32 B and columns 32..35 repeat column 31, with 36 the
- * sensor rows are read as is. Up to sil_frame_rows_per_xfer rows are read
- * per mcu_spi_rw call, one call returns at most 128 B (read_info_t.data).
+ * Frame read: sensor row stride is 36 B and each CS transaction consumes 4 B.
+ * Reading n rows in one CS returns (n - 1) * 36 + 32 bytes (n <= 3, max 104 B
+ * within 128 B read_info_t.data); columns 32..35 of the last row repeat col 31.
  */
 static int sil_frame_row_read(union fp_spi_ctrl ctrl, u32 row, u32 n)
 {
 	static const u8 rd[2] = { 0x00, 0x00 };
+	u32 rx_len = (n - 1) * SIL_FRAME_OUT_W + SIL_FRAME_SRC_W;
 
 	sil_fw_ipc++;
-	if (mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2, sil_fw_buf,
-		       n * sil_fw_w))
+	if (mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2, sil_fw_buf, rx_len))
 		return -EIO;
 	sil_fw_row0 = row;
 	sil_fw_nrows = n;
@@ -780,10 +777,7 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 		sil_fw_state = SIL_FW_ACTIVE;
 		sil_fw_off = 0;
 		sil_fw_nrows = 0;
-		sil_fw_w = sil_frame_row_bytes == SIL_FRAME_OUT_W ?
-			   SIL_FRAME_OUT_W : SIL_FRAME_SRC_W;
-		sil_fw_n = clamp(sil_frame_rows_per_xfer, 1,
-				 SIL_FW_BUF_LEN / (int)sil_fw_w);
+		sil_fw_n = clamp(sil_frame_rows_per_xfer, 1, SIL_FW_MAX_ROWS);
 		sil_fw_ipc = 0;
 		sil_fw_t0 = ktime_get();
 		if (hdr == 3) {
@@ -794,7 +788,7 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 	}
 
 	for (i = 0; i < dlen; i++, sil_fw_off++) {
-		u32 row, col, idx;
+		u32 row, col, k, max_col, idx;
 
 		if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
 			out[i] = 0;
@@ -810,16 +804,19 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 				return r;
 			}
 		}
-		idx = (row - sil_fw_row0) * sil_fw_w + min(col, sil_fw_w - 1);
+		k = row - sil_fw_row0;
+		max_col = (k + 1 < sil_fw_nrows) ?
+			  (SIL_FRAME_OUT_W - 1) : (SIL_FRAME_SRC_W - 1);
+		idx = k * SIL_FRAME_OUT_W + min(col, max_col);
 		out[i] = sil_fw_buf[idx];
 	}
 	if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
 		sil_fw_state = SIL_FW_IDLE;
 		if (sil_frame_stats)
-			pr_info_ratelimited("%s: frame %lld us, %u ipc, %u rows/xfer, %u B/row\n",
+			pr_info_ratelimited("%s: frame %lld us, %u ipc, %u rows/xfer\n",
 					    __func__,
 					    ktime_us_delta(ktime_get(), sil_fw_t0),
-					    sil_fw_ipc, sil_fw_n, sil_fw_w);
+					    sil_fw_ipc, sil_fw_n);
 	}
 	return 0;
 }
@@ -900,12 +897,23 @@ static int sil_spi_xfer(struct fp_data *fp, u8 *tx, u8 *rx, u32 len)
 
 	chunk = clamp(sil_rd_chunk, 1, 128);
 	dlen = len - hdr;
-	for (off = 0; off < dlen; off += n) {
-		n = min(chunk, dlen - off);
-		r = mcu_spi_rw(SIL_SPI_BUS, ctrl, hb, off ? 2 : hdr_tx,
-			       rx + hdr + off, n);
-		if (r)
-			return -EIO;
+	{
+		ktime_t t0 = ktime_get();
+		u32 ipcs = 0;
+
+		for (off = 0; off < dlen; off += n) {
+			n = min(chunk, dlen - off);
+			ipcs++;
+			r = mcu_spi_rw(SIL_SPI_BUS, ctrl, hb, off ? 2 : hdr_tx,
+				       rx + hdr + off, n);
+			if (r)
+				return -EIO;
+		}
+		if (sil_frame_stats && dlen >= 256)
+			pr_info_ratelimited("%s: bulk %u B, %lld us, %u ipc, chunk %u\n",
+					    __func__, dlen,
+					    ktime_us_delta(ktime_get(), t0),
+					    ipcs, chunk);
 	}
 	return 0;
 }
