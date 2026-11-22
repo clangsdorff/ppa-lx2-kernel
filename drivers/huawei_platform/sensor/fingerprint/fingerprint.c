@@ -18,6 +18,7 @@
 #include "fingerprint.h"
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/ktime.h>
 #include <linux/gpio.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -637,10 +638,17 @@ static int sil_hdr3_prime = 1;
 module_param(sil_hdr3_prime, int, 0644);
 static int sil_frame_w36 = 1;
 module_param(sil_frame_w36, int, 0644);
+static int sil_frame_rows_per_xfer = 2;
+module_param(sil_frame_rows_per_xfer, int, 0644);
+static int sil_frame_row_bytes = 32;
+module_param(sil_frame_row_bytes, int, 0644);
+static int sil_frame_stats;
+module_param(sil_frame_stats, int, 0644);
 
 #define SIL_FRAME_SRC_W		32
 #define SIL_FRAME_OUT_W		36
 #define SIL_FRAME_ROWS		160
+#define SIL_FW_BUF_LEN		128
 #define SIL_FRAME_OUT_LEN	(SIL_FRAME_OUT_W * SIL_FRAME_ROWS)
 #define SIL_REG_PAGE		0xf0
 #define SIL_WIN_PAGE		(0xff080150 >> 7)
@@ -653,8 +661,13 @@ static u32 sil_page;
 static u32 sil_win;
 static int sil_fw_state;
 static u32 sil_fw_off;
-static int sil_fw_row = -1;
-static u8 sil_fw_buf[SIL_FRAME_SRC_W];
+static u32 sil_fw_row0;
+static u32 sil_fw_nrows;
+static u32 sil_fw_w = SIL_FRAME_SRC_W;
+static u32 sil_fw_n = 1;
+static u32 sil_fw_ipc;
+static ktime_t sil_fw_t0;
+static u8 sil_fw_buf[SIL_FW_BUF_LEN];
 
 static void sil_queue_msg(u8 msg)
 {
@@ -723,10 +736,44 @@ static int sil_spi_tx(union fp_spi_ctrl ctrl, u8 *tx, u32 len)
 }
 
 /*
- * Frame read: sensor streams 32 byte rows, blob expects 36 per row.
- * Columns 32..35 repeat column 31 of the row. Sensor reads are 32 B rows
- * in output order, nothing is read past the last row.
+ * Frame read: blob expects 36 byte rows. With sil_frame_row_bytes 32 the
+ * sensor rows are 32 B and columns 32..35 repeat column 31, with 36 the
+ * sensor rows are read as is. Up to sil_frame_rows_per_xfer rows are read
+ * per mcu_spi_rw call, one call returns at most 128 B (read_info_t.data).
  */
+static int sil_frame_row_read(union fp_spi_ctrl ctrl, u32 row, u32 n)
+{
+	static const u8 rd[2] = { 0x00, 0x00 };
+
+	sil_fw_ipc++;
+	if (mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2, sil_fw_buf,
+		       n * sil_fw_w))
+		return -EIO;
+	sil_fw_row0 = row;
+	sil_fw_nrows = n;
+	return 0;
+}
+
+static int sil_frame_fetch(union fp_spi_ctrl ctrl, u32 row)
+{
+	u32 n = min_t(u32, sil_fw_n, SIL_FRAME_ROWS - row);
+	u32 i;
+	int r;
+
+	r = sil_frame_row_read(ctrl, row, n);
+	if (!r || n == 1)
+		return r;
+
+	pr_warn_ratelimited("%s: %u row read failed at row %u, single rows\n",
+			    __func__, n, row);
+	for (i = 0; i < n; i++) {
+		r = sil_frame_row_read(ctrl, row + i, 1);
+		if (r)
+			break;
+	}
+	return r;
+}
+
 static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 {
 	static const u8 rd[2] = { 0x00, 0x00 };
@@ -737,7 +784,13 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 	if (sil_fw_state == SIL_FW_ARMED) {
 		sil_fw_state = SIL_FW_ACTIVE;
 		sil_fw_off = 0;
-		sil_fw_row = -1;
+		sil_fw_nrows = 0;
+		sil_fw_w = sil_frame_row_bytes == SIL_FRAME_OUT_W ?
+			   SIL_FRAME_OUT_W : SIL_FRAME_SRC_W;
+		sil_fw_n = clamp(sil_frame_rows_per_xfer, 1,
+				 SIL_FW_BUF_LEN / (int)sil_fw_w);
+		sil_fw_ipc = 0;
+		sil_fw_t0 = ktime_get();
 		if (hdr == 3) {
 			r = sil_spi_tx(ctrl, (u8 *)rd, 2);
 			if (r)
@@ -746,7 +799,7 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 	}
 
 	for (i = 0; i < dlen; i++, sil_fw_off++) {
-		u32 row, col;
+		u32 row, col, idx;
 
 		if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
 			out[i] = 0;
@@ -754,19 +807,25 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 		}
 		row = sil_fw_off / SIL_FRAME_OUT_W;
 		col = sil_fw_off % SIL_FRAME_OUT_W;
-		if (sil_fw_row != (int)row) {
-			r = mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2,
-				       sil_fw_buf, SIL_FRAME_SRC_W);
+		if (!sil_fw_nrows || row < sil_fw_row0 ||
+		    row >= sil_fw_row0 + sil_fw_nrows) {
+			r = sil_frame_fetch(ctrl, row);
 			if (r) {
 				sil_fw_state = SIL_FW_IDLE;
-				return -EIO;
+				return r;
 			}
-			sil_fw_row = row;
 		}
-		out[i] = sil_fw_buf[min_t(u32, col, SIL_FRAME_SRC_W - 1)];
+		idx = (row - sil_fw_row0) * sil_fw_w + min(col, sil_fw_w - 1);
+		out[i] = sil_fw_buf[idx];
 	}
-	if (sil_fw_off >= SIL_FRAME_OUT_LEN)
+	if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
 		sil_fw_state = SIL_FW_IDLE;
+		if (sil_frame_stats)
+			pr_info_ratelimited("%s: frame %lld us, %u ipc, %u rows/xfer, %u B/row\n",
+					    __func__,
+					    ktime_us_delta(ktime_get(), sil_fw_t0),
+					    sil_fw_ipc, sil_fw_n, sil_fw_w);
+	}
 	return 0;
 }
 
