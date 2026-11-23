@@ -9,6 +9,7 @@
 #include <linux/init.h>
 #include <linux/types.h>
 #include <linux/string.h>
+#include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/netdevice.h>
 #include <linux/netfilter_ipv4.h>
@@ -653,11 +654,15 @@ void wifi_disconnect_report(void)
 
 void wifi_kernel_delay_report(struct delay_chr_report *delay_chr)
 {
-	struct http_return rtn_stat_wifi[RNT_STAT_SIZE];
+	struct http_return *rtn_stat_wifi;
 
 	pr_info("%s:\n", __func__);
-	memset(&rtn_stat_wifi, 0, sizeof(rtn_stat_wifi));
 	if (delay_chr == NULL)
+		return;
+
+	rtn_stat_wifi = kcalloc(RNT_STAT_SIZE, sizeof(*rtn_stat_wifi),
+		GFP_ATOMIC);
+	if (!rtn_stat_wifi)
 		return;
 
 	rtn_stat_wifi[WLAN_INTERFACE].report_type = WEB_STAT;
@@ -671,6 +676,7 @@ void wifi_kernel_delay_report(struct delay_chr_report *delay_chr)
 	rtn_stat_wifi[WLAN_INTERFACE].android_uid = delay_chr->android_uid;
 	chr_notify_event(CHR_WEB_STAT_EVENT, g_user_space_pid, 0,
 		rtn_stat_wifi);
+	kfree(rtn_stat_wifi);
 }
 
 bool is_stream_list_unuse(u8 hash_cnt)
