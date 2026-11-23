@@ -10,7 +10,7 @@ ifeq ($(TARGET_VERSION_MODE),factory)
 obj-$(CONFIG_HISI_VIRT_TO_PHYS) += virt_to_phys.o
 obj-$(CONFIG_HISI_MNTN_FACTORY) += mntn_factory.o
 endif
-obj-$(CONFIG_HISI_POWER_OFF)	+= hisi_poweroff.o
+obj-$(CONFIG_HISI_POWER_OFF)	+= hisi_poweroff.o hisi_warmboot.o hisi_warmboot_reloc.o
 obj-$(CONFIG_HISI_FIQ)	+= hisi_fiq.o
 hisilicon_platform_mntn-y := util.o dump.o fastbootlog.o mntn_filesys.o hisi_bootup_keypoint.o
 subdir-ccflags-$(CONFIG_HISI_BB)               += -Idrivers/hisi/mntn/blackbox/

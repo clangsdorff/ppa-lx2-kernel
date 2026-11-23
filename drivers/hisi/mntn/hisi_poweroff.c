@@ -43,6 +43,7 @@
 #include <linux/genhd.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
+#include <linux/hisi/hisi_warmboot.h>
 #define HISI_LOG_TAG HISI_POWEROFF_TAG
 #define IOMAP_ADD_INDEX 0
 #define POWERHOLD_PROTECT_BIT_OFFSET 16
@@ -127,7 +128,11 @@ static int hisi_bootrom_reboot_notify(struct notifier_block *nb,
 
 	if (hisi_is_bootrom_cmd(cmd) || g_force_bootrom_reset) {
 		g_force_bootrom_reset = 1;
+		hisi_warmboot_disarm();
 		hisi_invalidate_boot0_xloader();
+	} else if (cmd && (!strcmp(cmd, "warm") ||
+			   (!strcmp(cmd, "recovery") && hisi_warmboot_is_ready()))) {
+		hisi_warmboot_prepare(cmd);
 	}
 	return NOTIFY_DONE;
 }
@@ -226,6 +231,9 @@ static void hisi_pm_system_reset(enum reboot_mode mode, const char *cmd)
 	unsigned int curr_reboot_type = UNKNOWN;
 	const struct cmdword *reboot_reason_map = NULL;
 #endif
+
+	if (hisi_warmboot_is_ready())
+		hisi_warmboot_jump();
 
 	if (cmd == NULL || *cmd == '\0') {
 		BB_PRINT_PN("%s cmd is null\n", __func__);
@@ -329,11 +337,16 @@ static int hi3xxx_reset_probe(struct platform_device *pdev)
 	if (ret)
 		BB_PRINT_ERR("%s: sysfs_create_file bootrom_reboot failed: %d\n", __func__, ret);
 
+	ret = hisi_warmboot_init_sysfs();
+	if (ret)
+		BB_PRINT_ERR("%s: sysfs_create_file warm_reboot failed: %d\n", __func__, ret);
+
 	return 0;
 }
 
 static int hi3xxx_reset_remove(struct platform_device *pdev)
 {
+	hisi_warmboot_exit_sysfs();
 	sysfs_remove_file(kernel_kobj, &bootrom_reboot_attr.attr);
 	unregister_reboot_notifier(&hisi_bootrom_reboot_nb);
 

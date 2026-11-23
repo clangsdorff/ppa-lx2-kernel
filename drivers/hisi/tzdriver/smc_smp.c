@@ -1485,6 +1485,14 @@ static int smc_init_secondary_cpus(void)
 
 #ifdef SECURITY_AUTH_ENHANCE
 #define ALIGN_BIT  0x3
+#define WARMBOOT_TEE_CMD_PHYS  0x0fffe000ULL
+#define WARMBOOT_TEE_KEY_PHYS  0x0ffff000ULL
+#define WARMBOOT_TEE_KEY_MAGIC 0x5445454bU
+
+struct warmboot_tee_key_backup {
+	uint32_t magic;
+	struct session_crypto_info key;
+};
 
 static void free_root_key(void)
 {
@@ -1499,6 +1507,11 @@ static int get_session_root_key(void)
 {
 	int ret;
 	uint32_t *buffer = (uint32_t *)(g_cmd_data->in);
+	struct warmboot_tee_key_backup *bk;
+	const uint8_t *raw;
+	size_t i;
+	bool nonzero = false;
+
 #ifdef CONFIG_ARM64
 	if (buffer == NULL || ((uint64_t)(uintptr_t)buffer & ALIGN_BIT)) {
 #else
@@ -1513,9 +1526,34 @@ static int get_session_root_key(void)
 		tloge("No memory to store session root key\n");
 		return -ENOMEM;
 	}
-	if (memcpy_s(g_session_root_key, sizeof(*g_session_root_key),
-		(void *)(buffer + 1), sizeof(*g_session_root_key))) {
-		tloge("Copy session root key from TEE failed\n");
+	raw = (const uint8_t *)(buffer + 1);
+	for (i = 0; i < sizeof(*g_session_root_key); i++) {
+		if (raw[i] != 0) {
+			nonzero = true;
+			break;
+		}
+	}
+	bk = (struct warmboot_tee_key_backup *)__phys_to_virt(WARMBOOT_TEE_KEY_PHYS);
+	if (nonzero) {
+		if (memcpy_s(g_session_root_key, sizeof(*g_session_root_key),
+			(void *)(buffer + 1), sizeof(*g_session_root_key))) {
+			tloge("Copy session root key from TEE failed\n");
+			ret = -EFAULT;
+			goto free_mem;
+		}
+		bk->magic = WARMBOOT_TEE_KEY_MAGIC;
+		(void)memcpy_s(&bk->key, sizeof(bk->key),
+			g_session_root_key, sizeof(*g_session_root_key));
+	} else if (bk->magic == WARMBOOT_TEE_KEY_MAGIC) {
+		if (memcpy_s(g_session_root_key, sizeof(*g_session_root_key),
+			&bk->key, sizeof(*g_session_root_key))) {
+			tloge("Restore session root key failed\n");
+			ret = -EFAULT;
+			goto free_mem;
+		}
+		tlogi("Restored session root key across warmboot\n");
+	} else {
+		tloge("Session root key empty and no warmboot backup\n");
 		ret = -EFAULT;
 		goto free_mem;
 	}
@@ -1544,12 +1582,19 @@ int smc_init_data(struct device *class_dev)
 
 	if (class_dev == NULL || IS_ERR_OR_NULL(class_dev))
 		return -ENOMEM;
+#ifdef WARMBOOT_TEE_CMD_PHYS
+	g_cmd_data = (tc_ns_smc_queue *)__phys_to_virt(WARMBOOT_TEE_CMD_PHYS);
+	g_cmd_phys = WARMBOOT_TEE_CMD_PHYS;
+	if (memset_s(g_cmd_data, PAGE_SIZE, 0, PAGE_SIZE) != EOK)
+		return -EFAULT;
+#else
 	g_cmd_data = (tc_ns_smc_queue *)(uintptr_t)__get_free_page(
 		GFP_KERNEL | __GFP_ZERO);
 	if (g_cmd_data == NULL)
 		return -ENOMEM;
 
 	g_cmd_phys = virt_to_phys(g_cmd_data);
+#endif
 	/* Send the allocated buffer to TrustedCore for init */
 	if (smc_set_cmd_buffer()) {
 		ret = -EINVAL;
@@ -1599,7 +1644,9 @@ free_siq_worker:
 	kthread_stop(g_siq_thread);
 	g_siq_thread = NULL;
 free_mem:
+#ifndef WARMBOOT_TEE_CMD_PHYS
 	free_page((unsigned long)(uintptr_t)g_cmd_data);
+#endif
 	g_cmd_data = NULL;
 #ifdef SECURITY_AUTH_ENHANCE
 	if (!IS_ERR_OR_NULL(g_session_root_key))

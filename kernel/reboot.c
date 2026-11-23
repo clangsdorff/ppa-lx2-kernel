@@ -16,6 +16,10 @@
 #include <linux/syscalls.h>
 #include <linux/syscore_ops.h>
 #include <linux/uaccess.h>
+#include <linux/cpu.h>
+#ifdef CONFIG_HISI_POWER_OFF
+#include <linux/hisi/hisi_warmboot.h>
+#endif
 #ifdef CONFIG_HISI_SP805_WATCHDOG
 #include <linux/watchdog.h>
 #define SHUTDOWN_TIMEOUT 30
@@ -219,12 +223,22 @@ void kernel_restart(char *cmd)
 {
 	kernel_restart_prepare(cmd);
 	migrate_to_reboot_cpu();
+#ifdef CONFIG_HISI_POWER_OFF
+	if (hisi_warmboot_is_ready()) {
+		cpu_hotplug_enable();
+		disable_nonboot_cpus();
+	}
+#endif
 	syscore_shutdown();
 	if (!cmd)
 		pr_emerg("Restarting system\n");
 	else
 		pr_emerg("Restarting system with command '%s'\n", cmd);
 	kmsg_dump(KMSG_DUMP_RESTART);
+#ifdef CONFIG_HISI_POWER_OFF
+	if (hisi_warmboot_is_ready())
+		hisi_warmboot_jump();
+#endif
 	machine_restart(cmd);
 }
 EXPORT_SYMBOL_GPL(kernel_restart);
