@@ -638,7 +638,7 @@ static int sil_hdr3_prime = 1;
 module_param(sil_hdr3_prime, int, 0644);
 static int sil_frame_w36 = 1;
 module_param(sil_frame_w36, int, 0644);
-static int sil_frame_rows_per_xfer = 1;
+static int sil_frame_rows_per_xfer = 2;
 module_param(sil_frame_rows_per_xfer, int, 0644);
 static int sil_frame_stats;
 module_param(sil_frame_stats, int, 0644);
@@ -647,7 +647,9 @@ module_param(sil_frame_stats, int, 0644);
 #define SIL_FRAME_OUT_W		36
 #define SIL_FRAME_ROWS		160
 #define SIL_FW_BUF_LEN		128
-#define SIL_FW_MAX_ROWS		(((SIL_FW_BUF_LEN - SIL_FRAME_SRC_W) / SIL_FRAME_OUT_W) + 1)
+/* iomcu returns zeros past 84 B of one read without reporting an error */
+#define SIL_FW_RX_MAX		84
+#define SIL_FW_MAX_ROWS		(((SIL_FW_RX_MAX - SIL_FRAME_SRC_W) / SIL_FRAME_OUT_W) + 1)
 #define SIL_FRAME_OUT_LEN	(SIL_FRAME_OUT_W * SIL_FRAME_ROWS)
 #define SIL_REG_PAGE		0xf0
 #define SIL_WIN_PAGE		(0xff080150 >> 7)
@@ -734,9 +736,12 @@ static int sil_spi_tx(union fp_spi_ctrl ctrl, u8 *tx, u32 len)
 }
 
 /*
- * Frame read: sensor row stride is 36 B and each CS transaction consumes 4 B.
- * Reading n rows in one CS returns (n - 1) * 36 + 32 bytes (n <= 3, max 104 B
- * within 128 B read_info_t.data); columns 32..35 of the last row repeat col 31.
+ * Frame read: sensor row stride is 36 B. In each CS transaction the first
+ * byte is junk (col 0 of the first row) and 4 B are dropped after the last
+ * byte read (cols 32..35 of the last row), so n rows in one CS return
+ * (n - 1) * 36 + 32 bytes. With n > 1 the lost pixels are taken from the
+ * vertically adjacent row of the same transaction, with n == 1 columns
+ * 32..35 repeat col 31.
  */
 static int sil_frame_row_read(union fp_spi_ctrl ctrl, u32 row, u32 n)
 {
@@ -805,9 +810,16 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 			}
 		}
 		k = row - sil_fw_row0;
-		max_col = (k + 1 < sil_fw_nrows) ?
-			  (SIL_FRAME_OUT_W - 1) : (SIL_FRAME_SRC_W - 1);
-		idx = k * SIL_FRAME_OUT_W + min(col, max_col);
+		if (sil_fw_nrows > 1 && k == 0 && col == 0) {
+			idx = SIL_FRAME_OUT_W;
+		} else if (sil_fw_nrows > 1 && k + 1 == sil_fw_nrows &&
+			   col >= SIL_FRAME_SRC_W) {
+			idx = (k - 1) * SIL_FRAME_OUT_W + col;
+		} else {
+			max_col = (k + 1 < sil_fw_nrows) ?
+				  (SIL_FRAME_OUT_W - 1) : (SIL_FRAME_SRC_W - 1);
+			idx = k * SIL_FRAME_OUT_W + min(col, max_col);
+		}
 		out[i] = sil_fw_buf[idx];
 	}
 	if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
