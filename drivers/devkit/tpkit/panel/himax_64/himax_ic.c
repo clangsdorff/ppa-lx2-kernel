@@ -3650,18 +3650,16 @@ void himax_nc_get_DSRAM_data(uint8_t *info_data)
 	int mutual_data_size = x_num * y_num * 2;
 	int total_size =  (x_num * y_num + x_num + y_num) * 2 + 4;
 	uint16_t check_sum_cal = 0;
-	uint8_t temp_info_data_hx102b[(MUTUL_NUM_HX83102+ SELF_NUM_HX83102) *2 + 4 + 8] = {0}; //max mkey size = 8
-	uint8_t temp_info_data_hx112a[(MUTUL_NUM_HX83112+ SELF_NUM_HX83112) *2 + 4 + 8] = {0};
+	int alloc_size = (MUTUL_NUM_HX83112 + SELF_NUM_HX83112) * 2 + 4 + 8;
 	uint8_t *temp_info_data = NULL;
 
-	if (IC_NC_TYPE == HX_83102E_SERIES_PWON) {
-		temp_info_data = kcalloc(total_size,
-			sizeof(uint8_t), GFP_KERNEL);
-		if (!temp_info_data) {
-			TS_LOG_ERR("%s: Memory allocate FAIL!\n",
-				__func__);
-			return;
-		}
+	if (alloc_size < total_size + 8)
+		alloc_size = total_size + 8;
+	temp_info_data = kcalloc(alloc_size, sizeof(uint8_t), GFP_KERNEL);
+	if (!temp_info_data) {
+		TS_LOG_ERR("%s: Memory allocate FAIL!\n",
+			__func__);
+		return;
 	}
 	/*1. Read number of MKey R100070E8H to determin data size*/
 	himax_rw_reg_reformat(ADDR_MKEY,tmp_addr);
@@ -3676,6 +3674,7 @@ void himax_nc_get_DSRAM_data(uint8_t *info_data)
 	if(fw_run_flag < 0)
 	{
 		TS_LOG_INFO("%s Data NOT ready => bypass \n", __func__);
+		kfree(temp_info_data);
 		return;
 	}
 
@@ -3698,9 +3697,9 @@ void himax_nc_get_DSRAM_data(uint8_t *info_data)
 		if ( total_size_temp >= max_i2c_size)
 		{
 			if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-				himax_nc_register_read(tmp_addr, max_i2c_size, &temp_info_data_hx102b[i*max_i2c_size]);
+				himax_nc_register_read(tmp_addr, max_i2c_size, &temp_info_data[i*max_i2c_size]);
 			else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-				himax_nc_register_read(tmp_addr, max_i2c_size, &temp_info_data_hx112a[i*max_i2c_size]);
+				himax_nc_register_read(tmp_addr, max_i2c_size, &temp_info_data[i*max_i2c_size]);
 			else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
 				himax_nc_register_read(tmp_addr, max_i2c_size,
 					&temp_info_data[i * max_i2c_size]);
@@ -3711,9 +3710,9 @@ void himax_nc_get_DSRAM_data(uint8_t *info_data)
 		{
 			TS_LOG_DEBUG("last total_size_temp=%d\n",total_size_temp);
 			if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-				himax_nc_register_read(tmp_addr, total_size_temp % max_i2c_size, &temp_info_data_hx102b[i*max_i2c_size]);
+				himax_nc_register_read(tmp_addr, total_size_temp % max_i2c_size, &temp_info_data[i*max_i2c_size]);
 			else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-				himax_nc_register_read(tmp_addr, total_size_temp % max_i2c_size, &temp_info_data_hx112a[i*max_i2c_size]);
+				himax_nc_register_read(tmp_addr, total_size_temp % max_i2c_size, &temp_info_data[i*max_i2c_size]);
 			else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
 				himax_nc_register_read(tmp_addr,
 					total_size_temp % max_i2c_size,
@@ -3744,9 +3743,9 @@ void himax_nc_get_DSRAM_data(uint8_t *info_data)
 	for (i = 2; i < total_size; i=i+2)/* 2:PASSWORD NOT included */
 	{
 		if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-			check_sum_cal += (temp_info_data_hx102b[i+1]*256 + temp_info_data_hx102b[i]);
+			check_sum_cal += (temp_info_data[i+1]*256 + temp_info_data[i]);
 		else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-			check_sum_cal += (temp_info_data_hx112a[i+1]*256 + temp_info_data_hx112a[i]);
+			check_sum_cal += (temp_info_data[i+1]*256 + temp_info_data[i]);
 		else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
 			check_sum_cal += (temp_info_data[i + DATA_1] *
 				SHIFT_NUM + temp_info_data[i]);
@@ -3763,24 +3762,22 @@ void himax_nc_get_DSRAM_data(uint8_t *info_data)
 					mutual_data_size * sizeof(uint8_t));
 			}
 		}
+		kfree(temp_info_data);
 		return;
 	}
 	else
 	{
 		if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-			memcpy(info_data, &temp_info_data_hx102b[4], mutual_data_size * sizeof(uint8_t));
+			memcpy(info_data, &temp_info_data[4], mutual_data_size * sizeof(uint8_t));
 		else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-			memcpy(info_data, &temp_info_data_hx112a[4], mutual_data_size * sizeof(uint8_t));
+			memcpy(info_data, &temp_info_data[4], mutual_data_size * sizeof(uint8_t));
 		else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
 			memcpy(info_data, &temp_info_data[DATA_4],
 				mutual_data_size * sizeof(uint8_t));
 
 		TS_LOG_DEBUG("%s checksum PASS \n", __func__);
 	}
-	if (IC_NC_TYPE == HX_83102E_SERIES_PWON) {
-		kfree(temp_info_data);
-		return;
-	}
+	kfree(temp_info_data);
 }
 void himax_nc_diag_register_set(uint8_t diag_command)
 {

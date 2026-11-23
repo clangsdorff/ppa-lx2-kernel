@@ -638,22 +638,34 @@ static int parser_get_u8_array(char *key, u8 *buf, u16 base, int len)
 static int parser_get_int_data(const char *section,
 	char *keyname, char *rv, int rv_len)
 {
-	int len = 0;
-	char value[PARSER_MAX_KEY_VALUE_LEN] = { 0 };
+	int i;
+	int vlen;
 
 	if (rv == NULL || section == NULL || keyname == NULL) {
 		TS_LOG_ERR("Parameters are invalid\n");
 		return -EINVAL;
 	}
 
-	/* return a white-space string if get nothing */
-	if (parser_get_ini_key_value(section, keyname, value, sizeof(value)) < 0) {
-		snprintf(rv, rv_len, "%s", value);
-		return 0;
+	for (i = 0; i < g_ini_items; i++) {
+		if (ipio_strcmp(section, ini_info[i].section_name) != 0)
+			continue;
+
+		if (ipio_strcmp(keyname, ini_info[i].key_name) != 0)
+			continue;
+
+		vlen = ini_info[i].key_val_len;
+		if (vlen > PARSER_MAX_KEY_VALUE_LEN)
+			vlen = PARSER_MAX_KEY_VALUE_LEN;
+		TS_LOG_DEBUG("(key: %s, value:%.*s) => (ini key: %s, val: %s)\n",
+				keyname, vlen, ini_info[i].key_value,
+				ini_info[i].key_name,
+				ini_info[i].key_value);
+		return snprintf(rv, rv_len, "%.*s", vlen, ini_info[i].key_value);
 	}
 
-	len = snprintf(rv, rv_len, "%s", value);
-	return len;
+	/* return a white-space string if get nothing */
+	snprintf(rv, rv_len, "%s", "");
+	return 0;
 }
 
 /* Count the number of each line and assign the content to tmp buffer */

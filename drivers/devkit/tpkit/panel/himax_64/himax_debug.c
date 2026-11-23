@@ -238,8 +238,7 @@ static ssize_t himax_diag_show(struct device *dev,struct device_attribute *attr,
 
 	int loop_j = 0;;
 	unsigned int index = 0;
-	uint8_t info_data_hx102b[MUTUL_NUM_HX83102* 2] = {0};
-	uint8_t info_data_hx112a[MUTUL_NUM_HX83112* 2] = {0};
+	uint8_t *info_data;
 	int16_t new_data = 0;
 
 	dsram_type = g_diag_command /10;
@@ -297,19 +296,25 @@ static ssize_t himax_diag_show(struct device *dev,struct device_attribute *attr,
 	}
 	else if (dsram_type > 0 && dsram_type <= 8)
 	{
+		info_data = kcalloc(MUTUL_NUM_HX83102E * DATA_2,
+			sizeof(uint8_t), GFP_KERNEL);
+		if (!info_data) {
+			TS_LOG_ERR("fail to alloc info data mem\n");
+			return count;
+		}
 		himax_burst_enable(1);
 		if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-			himax_nc_get_DSRAM_data(info_data_hx102b);
+			himax_nc_get_DSRAM_data(info_data);
 		else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-			himax_nc_get_DSRAM_data(info_data_hx112a);
+			himax_nc_get_DSRAM_data(info_data);
 		for (loop_i = 0,index = 0; loop_i < HX_NC_TX_NUM; loop_i++)
 		{
 			for (loop_j = 0; loop_j < HX_NC_RX_NUM; loop_j++)
 			{
 				if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-					new_data = (short)(info_data_hx102b[index + 1] << 8 | info_data_hx102b[index]);
+					new_data = (short)(info_data[index + 1] << 8 | info_data[index]);
 				else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-					new_data = (short)(info_data_hx112a[index + 1] << 8 | info_data_hx112a[index]);
+					new_data = (short)(info_data[index + 1] << 8 | info_data[index]);
 				if(dsram_type == 1)
 				{
 					diag_mutual[loop_i * HX_NC_RX_NUM+loop_j] = new_data;
@@ -317,6 +322,7 @@ static ssize_t himax_diag_show(struct device *dev,struct device_attribute *attr,
 				index += 2;
 			}
 		}
+		kfree(info_data);
 		for (loop_i = 0; loop_i < mutual_num; loop_i++)
 		{
 			count+=snprintf(buf+count, HX_MAX_PRBUF_SIZE-count,"%6d", diag_mutual[loop_i]);

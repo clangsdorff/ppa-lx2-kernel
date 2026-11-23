@@ -692,22 +692,19 @@ int himax_Raw_Data_test(int step) //for Rawdara
 	int tx = hx_nc_getYChannel();
 	unsigned int index = 0;
 
-	uint8_t info_data_hx102b[MUTUL_NUM_HX83102* 2] = {0};
-	uint8_t info_data_hx112a[MUTUL_NUM_HX83112* 2] = {0};
-	uint8_t *info_data_hx83102e = NULL;
+	uint8_t *info_data;
 
-	if (IC_NC_TYPE == HX_83102E_SERIES_PWON) {
-		info_data_hx83102e = kcalloc(MUTUL_NUM_HX83102E * DATA_2,
-			sizeof(uint8_t), GFP_KERNEL);
-		if (!info_data_hx83102e) {
-			TS_LOG_ERR("fail to alloc info data mem\n");
-			kfree(info_data_hx83102e);
-		}
-	}
 	//check if devided by zero
 	if (rx == 0)
 	{
 		TS_LOG_ERR("%s devided by zero.");
+		return HX_ERR;
+	}
+
+	info_data = kcalloc(MUTUL_NUM_HX83102E * DATA_2, sizeof(uint8_t),
+		GFP_KERNEL);
+	if (!info_data) {
+		TS_LOG_ERR("fail to alloc info data mem\n");
 		return HX_ERR;
 	}
 
@@ -726,25 +723,25 @@ int himax_Raw_Data_test(int step) //for Rawdara
 	himax_nc_diag_register_set(0x0A);/*===DC===*/
 	himax_burst_enable(1);
 	if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-		himax_nc_get_DSRAM_data(info_data_hx102b);
+		himax_nc_get_DSRAM_data(info_data);
 	else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-		himax_nc_get_DSRAM_data(info_data_hx112a);
+		himax_nc_get_DSRAM_data(info_data);
 	else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
-		himax_nc_get_DSRAM_data(info_data_hx83102e);
+		himax_nc_get_DSRAM_data(info_data);
 	index = 0;
 	for (i = 0; i < tx; i++)
 		{
 			for (j = 0; j < rx; j++)
 			{
 				if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-					new_data = (short)(info_data_hx102b[index + 1] << 8 | info_data_hx102b[index]);
+					new_data = (short)(info_data[index + 1] << 8 | info_data[index]);
 				else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-					new_data = (short)(info_data_hx112a[index + 1] << 8 | info_data_hx112a[index]);
+					new_data = (short)(info_data[index + 1] << 8 | info_data[index]);
 				else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
 					new_data = (short)((
-						info_data_hx83102e[index +
+						info_data[index +
 						DATA_1] << DATA_8) |
-						info_data_hx83102e[index]);
+						info_data[index]);
 				mutual_bank[i*rx+j] = new_data;
 				index += 2;
 			}
@@ -784,8 +781,7 @@ int himax_Raw_Data_test(int step) //for Rawdara
 		strncat(buf_test_result, hx_result_fail_str,strlen(hx_result_fail_str)+1);
 		TS_LOG_INFO("[PANEL_ISSUE] %s: End --> FAIL\n",__func__);
 	}
-	if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
-		kfree(info_data_hx83102e);
+	kfree(info_data);
 
 	return result;
 }
@@ -879,22 +875,19 @@ static int himax_iir_test(int step) //for Noise Delta
 	int rx = hx_nc_getXChannel();
 	unsigned int index = 0;
 
-	uint8_t info_data_hx102b[MUTUL_NUM_HX83102* 2] = {0};
-	uint8_t info_data_hx112a[MUTUL_NUM_HX83112* 2] = {0};
-	uint8_t *info_data_hx83102e = NULL;
+	uint8_t *info_data;
 
-	if (IC_NC_TYPE == HX_83102E_SERIES_PWON) {
-		info_data_hx83102e = kcalloc(MUTUL_NUM_HX83102E * DATA_2,
-			sizeof(uint8_t), GFP_KERNEL);
-		if (!info_data_hx83102e) {
-			TS_LOG_ERR("fail to alloc info data mem\n");
-			kfree(info_data_hx83102e);
-		}
-	}
 	//check if devided by zero
 	if (rx == 0)
 	{
 		TS_LOG_ERR("%s devided by zero.");
+		return HX_ERR;
+	}
+
+	info_data = kcalloc(MUTUL_NUM_HX83102E * DATA_2, sizeof(uint8_t),
+		GFP_KERNEL);
+	if (!info_data) {
+		TS_LOG_ERR("fail to alloc info data mem\n");
 		return HX_ERR;
 	}
 
@@ -905,24 +898,24 @@ static int himax_iir_test(int step) //for Noise Delta
 	himax_nc_diag_register_set(0x0F);/*===IIR===*/
 	himax_burst_enable(1);
 	if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-		himax_nc_get_DSRAM_data(info_data_hx102b);
+		himax_nc_get_DSRAM_data(info_data);
 	else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-		himax_nc_get_DSRAM_data(info_data_hx112a);
+		himax_nc_get_DSRAM_data(info_data);
 	else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
-		himax_nc_get_DSRAM_data(info_data_hx83102e);
+		himax_nc_get_DSRAM_data(info_data);
 
 	for (i = 0,index = 0; i < tx; i++)
 	{
 		for (j = 0; j < rx; j++)
 		{
 			if(HX_83102B_SERIES_PWON ==IC_NC_TYPE)
-				new_data = (short)(info_data_hx102b[index + 1] << 8 | info_data_hx102b[index]);
+				new_data = (short)(info_data[index + 1] << 8 | info_data[index]);
 			else if(HX_83112A_SERIES_PWON ==IC_NC_TYPE)
-				new_data = (short)(info_data_hx112a[index + 1] << 8 | info_data_hx112a[index]);
+				new_data = (short)(info_data[index + 1] << 8 | info_data[index]);
 			else if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
 				new_data = (short)((
-					info_data_hx83102e[index + DATA_1] <<
-					DATA_8) | info_data_hx83102e[index]);
+					info_data[index + DATA_1] <<
+					DATA_8) | info_data[index]);
 			mutual_iir[i*rx+j] = new_data;
 			index += 2;
 		}
@@ -958,8 +951,7 @@ static int himax_iir_test(int step) //for Noise Delta
 		strncat(buf_test_result, hx_result_fail_str,strlen(hx_result_fail_str)+1);
 		TS_LOG_INFO("[PANEL_ISSUE] %s: End --> FAIL\n",__func__);
 	}
-	if (IC_NC_TYPE == HX_83102E_SERIES_PWON)
-		kfree(info_data_hx83102e);
+	kfree(info_data);
 
 	return result;
 
