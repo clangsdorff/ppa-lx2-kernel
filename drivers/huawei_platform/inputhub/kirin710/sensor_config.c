@@ -939,10 +939,10 @@ void SetApds9308AlsExtendPrameters(void)
 			break;
 		}
 	}
-	if ((g_apds9308Para[paraTable].apds9308_para) > SENSOR_PLATFORM_EXTEND_ALS_DATA_SIZE) {
+	if (sizeof(g_apds9308Para[paraTable].apds9308_para) > SENSOR_PLATFORM_EXTEND_ALS_DATA_SIZE) {
 		len = SENSOR_PLATFORM_EXTEND_ALS_DATA_SIZE;
 	} else {
-		len = g_apds9308Para[paraTable].apds9308_para;
+		len = sizeof(g_apds9308Para[paraTable].apds9308_para);
 	}
 	memcpy(als_data.als_extend_data, g_apds9308Para[paraTable].apds9308_para, len);
 	minThreshold_als_para = g_apds9308Para[paraTable].apds9308_para[APDS9308_MIN_THD_NUM];

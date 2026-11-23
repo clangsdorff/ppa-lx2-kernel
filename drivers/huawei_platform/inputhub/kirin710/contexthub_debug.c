@@ -296,10 +296,8 @@ static void iomcu_big_data_flush(uint32_t event_id)
 
 static int big_data_test(int tag, int argv[], int argc)
 {
-	write_info_t pkg_ap;
 	uint32_t def, sel;
 	uint64_t fetch_data = 0;
-	int ret = -1;
 
 	if (argc != 2)
 		return -1;
@@ -792,7 +790,6 @@ static int ps_param_write(int tag, int argv[], int argc)
 	pkt_parameter_req_t spkt;
 	pkt_header_t *shd = (pkt_header_t *)&spkt;
 	int ret = 0;
-	int i = 0;
 	int pwindows_value = argv[0];
 	int pwave_value = argv[1];
 	int threshold_value = argv[2];

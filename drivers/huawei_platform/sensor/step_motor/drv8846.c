@@ -907,7 +907,7 @@ static void drv8846_step_start(struct drv_data *di)
  * @param di the device info struct.
  * @return void.
  */
-static void drv8846_step_stop(const struct drv_data *di)
+static void drv8846_step_stop(struct drv_data *di)
 {
 	if (!di) {
 		hwlog_err("%s di is null\n", __func__);
@@ -1300,7 +1300,7 @@ static void st_start_motor(struct drv_data *di)
 	drv8846_step_start(di);
 }
 
-static void ti_start_motor(const struct drv_data *di)
+static void ti_start_motor(struct drv_data *di)
 {
 	if (!di) {
 		hwlog_err("%s di is null\n", __func__);

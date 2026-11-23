@@ -927,7 +927,7 @@ static int ak09970_fst_check_data(const struct type_mag_data buf_data[],
 	return AK09970_RETCODE_SUCCESS;
 }
 
-static int ak09970_fst_run(const struct type_device_data *akm_ak09970)
+static int __maybe_unused ak09970_fst_run(const struct type_device_data *akm_ak09970)
 {
 	int result;
 	struct type_mag_data buf_data[AK09970_FST_DATA_BUF_SIZE];

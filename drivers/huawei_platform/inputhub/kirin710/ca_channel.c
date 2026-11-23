@@ -42,7 +42,7 @@ static const struct cas_cmd_map cas_cmd_map_tab[] = {
     {CHB_IOCTL_CA_INTERVAL_SET, -1, TAG_CA, CMD_CMN_INTERVAL_REQ, SUB_CMD_NULL_REQ},
 };
 
-static char * ca_type_str[] = {
+static char * ca_type_str[] __maybe_unused = {
 	[CA_TYPE_START] = "start",
 	[CA_TYPE_PICKUP] = "pickup",
 	[CA_TYPE_PUTDOWN] = "putdown",

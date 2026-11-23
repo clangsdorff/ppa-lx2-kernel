@@ -112,7 +112,7 @@ enum headset_status {
 
 #ifdef CONFIG_HUAWEI_DSM
 /* dmd error report definition */
-static struct dsm_dev dsm_anc_hs = {
+static struct dsm_dev dsm_anc_hs __maybe_unused = {
 	.name = "dsm_anc_hs",
 	.device_name = NULL,
 	.ic_name = NULL,
@@ -120,7 +120,7 @@ static struct dsm_dev dsm_anc_hs = {
 	.fops = NULL,
 	.buff_size = BUFFER_SIZE,
 };
-static struct dsm_client *anc_hs_dclient;
+static struct dsm_client *anc_hs_dclient __maybe_unused;
 #endif
 
 struct anc_hs_data {
@@ -831,7 +831,7 @@ static void anc_hs_btn_judge(struct work_struct *work)
 	__pm_relax(&anc_pdata->wake_lock);
 }
 
-static irqreturn_t anc_hs_btn_handler(int irq, void *data)
+static irqreturn_t __maybe_unused anc_hs_btn_handler(int irq, void *data)
 {
 	/* make sure delay_work to be scheduled */
 	__pm_wakeup_event(&anc_pdata->wake_lock, jiffies_to_msecs(50));
@@ -1071,7 +1071,7 @@ static const struct file_operations anc_hs_fops = {
 #endif
 };
 
-static struct miscdevice anc_hs_device = {
+static struct miscdevice anc_hs_device __maybe_unused = {
 	.minor  = MISC_DYNAMIC_MINOR,
 	.name   = "ana_hs",
 	.fops   = &anc_hs_fops,
@@ -1173,7 +1173,7 @@ static void read_volume_down_limit(struct device_node *node)
 			ANC_HS_VOLUME_DOWN_MAX;
 }
 
-static void load_anc_hs_config(struct device_node *node)
+static void __maybe_unused load_anc_hs_config(struct device_node *node)
 {
 	read_adc_channel_number(node);
 
@@ -1186,7 +1186,7 @@ static void load_anc_hs_config(struct device_node *node)
 	read_volume_down_limit(node);
 }
 
-static struct anc_hs_ops anc_hs_ops = {
+static struct anc_hs_ops anc_hs_ops __maybe_unused = {
 	.anc_hs_dev_register = anc_hs_dev_register,
 	.anc_hs_check_headset_pluged_in = NULL,
 	.anc_hs_start_charge = anc_hs_start_charge,
@@ -1230,7 +1230,7 @@ static int hs_load_gpio(struct device *dev, int *gpio_index,
 	return ret;
 }
 
-static int anc_hs_load_gpio_pdata(struct device *dev)
+static int __maybe_unused anc_hs_load_gpio_pdata(struct device *dev)
 {
 	if (hs_load_gpio(dev, &(anc_pdata->gpio_mic_sw), SWITCH_CHIP_HSBIAS,
 		"gpios", 0, "gpio_mic_sw", true) < 0)
@@ -1271,7 +1271,7 @@ static void value_initial(void)
 	anc_pdata->hs_status = ANC_HS_HEADSET_PLUG_OUT;
 }
 
-static void anc_hs_remove_workqueue(void)
+static void __maybe_unused anc_hs_remove_workqueue(void)
 {
 	if (anc_pdata->anc_hs_btn_delay_wq) {
 		cancel_delayed_work(&anc_pdata->anc_hs_btn_delay_work);
@@ -1280,7 +1280,7 @@ static void anc_hs_remove_workqueue(void)
 	}
 }
 
-static int anc_hs_create_workqueue(void)
+static int __maybe_unused anc_hs_create_workqueue(void)
 {
 	anc_pdata->anc_hs_btn_delay_wq =
 		create_singlethread_workqueue("anc_hs_btn_delay_wq");
@@ -1296,7 +1296,7 @@ static int anc_hs_create_workqueue(void)
 static int anc_hs_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct device_node *node = dev->of_node;
+	struct device_node *node __maybe_unused = dev->of_node;
 	int ret;
 
 	anc_pdata = devm_kzalloc(dev, sizeof(*anc_pdata), GFP_KERNEL);

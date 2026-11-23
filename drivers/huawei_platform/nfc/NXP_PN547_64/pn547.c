@@ -149,9 +149,10 @@ EXPORT_SYMBOL(realse_read);
 
 static int nfc_nv_opera(int opr, int idx, const char *name, int len, void *data)
 {
-	hwlog_info("%s:enter.\n", __func__);
 	int ret = -1;
 	struct hisi_nve_info_user user_info;
+
+	hwlog_info("%s:enter.\n", __func__);
 
 	memset(&user_info, 0, sizeof(user_info));
 	user_info.nv_operation = opr;
@@ -1582,10 +1583,12 @@ static int gt_boost_config(struct pn547_dev *pdev)
 
 int set_fwupdate_on_info(char info)
 {
-	hwlog_info("%s: enter!\n", __func__);
 	char hexPara[TEL_HUAWEI_NV_NFCCAL_LEGTH] = {0};
 	/* read nfc configure value from nvm */
 	int ret = -1;
+	int retNv = -1;
+
+	hwlog_info("%s: enter!\n", __func__);
 	ret = nfc_nv_opera(NV_READ, TEL_HUAWEI_NV_NFCCAL_NUMBER, TEL_HUAWEI_NV_NFCCAL_NAME, TEL_HUAWEI_NV_NFCCAL_LEGTH, hexPara);
 	if (ret < 0) {
 		hwlog_err("%s: get nv error ret: %d!\n", __func__, ret);
@@ -1593,7 +1596,6 @@ int set_fwupdate_on_info(char info)
 	}
 	/* write nfc configure value to nvm */
 	hexPara[FWUPDATE_ON_OFFSET] = info;
-	int retNv = -1;
 	retNv = nfc_nv_opera(NV_WRITE, TEL_HUAWEI_NV_NFCCAL_NUMBER, TEL_HUAWEI_NV_NFCCAL_NAME, TEL_HUAWEI_NV_NFCCAL_LEGTH, hexPara);
 	if (retNv < 0) {
 		hwlog_err("%s: set nv error ret: %d!\n", __func__, ret);
@@ -1604,10 +1606,11 @@ int set_fwupdate_on_info(char info)
 
 int get_fwupdate_on_info(char *info)
 {
-	hwlog_info("%s: enter!\n", __func__);
 	char hexPara[TEL_HUAWEI_NV_NFCCAL_LEGTH] = {0};
 	/* read nfc configure value from nvm */
 	int ret = -1;
+
+	hwlog_info("%s: enter!\n", __func__);
 	ret = nfc_nv_opera(NV_READ, TEL_HUAWEI_NV_NFCCAL_NUMBER, TEL_HUAWEI_NV_NFCCAL_NAME, TEL_HUAWEI_NV_NFCCAL_LEGTH, hexPara);
 	if (ret < 0) {
 		hwlog_err("%s: get nv error ret: %d!\n", __func__, ret);

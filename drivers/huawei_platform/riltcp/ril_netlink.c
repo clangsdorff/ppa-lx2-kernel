@@ -151,7 +151,7 @@ int ril_tcp_send_reset(const char * dev)
 
 static int ril_netlink_thread(void *data)
 {
-    char * if_name[MAX_IF_NAME];
+    char if_name[MAX_IF_NAME];
     hwlog_info("%s: ril_netlink_thread start\n", __func__);
     
     while (1) {

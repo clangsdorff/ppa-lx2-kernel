@@ -840,8 +840,8 @@ static ssize_t attr_acc_calibrate_write(struct device *dev, struct device_attrib
 	int ret = 0, i;
 	char content[CLI_CONTENT_LEN_MAX] = { 0 };
 	const int32_t *acc_cali_data = NULL;
-	const int32_t *minThreshold = NULL;
-	const int32_t *maxThreshold = NULL;
+	const int32_t *minThreshold __maybe_unused = NULL;
+	const int32_t *maxThreshold __maybe_unused = NULL;
 	char date_str[CLI_TIME_STR_LEN] = { 0 };
 	interval_param_t param;
 	read_info_t read_pkg;
@@ -993,8 +993,8 @@ static ssize_t attr_gyro_calibrate_write(struct device *dev, struct device_attri
 	read_info_t read_pkg;
 	char content[CLI_CONTENT_LEN_MAX] = { 0 };
 	const int32_t *gyro_cali_data = NULL;
-	const int32_t *minThreshold = NULL;
-	const int32_t *maxThreshold = NULL;
+	const int32_t *minThreshold __maybe_unused = NULL;
+	const int32_t *maxThreshold __maybe_unused = NULL;
 	char date_str[CLI_TIME_STR_LEN] = { 0 };
 	interval_param_t param;
 	#ifdef SENSOR_DATA_ACQUISITION
@@ -1238,8 +1238,8 @@ static ssize_t attr_ps_calibrate_write(struct device *dev, struct device_attribu
 	char content[CLI_CONTENT_LEN_MAX] = {0};
 	char date_str[CLI_TIME_STR_LEN] = {0};
 	const int32_t *ps_cali_data = NULL;
-	const int32_t *minThreshold = NULL;
-	const int32_t *maxThreshold = NULL;
+	const int32_t *minThreshold __maybe_unused = NULL;
+	const int32_t *maxThreshold __maybe_unused = NULL;
 	#ifdef SENSOR_DATA_ACQUISITION
 	int32_t minThreshold_ps[PS_CAL_NUM] = {0,0,0,-ps_data.offset_min};
 	int32_t maxThreshold_ps[PS_CAL_NUM] = {ps_data.ps_calib_20cm_threshold,ps_data.ps_calib_5cm_threshold,ps_data.ps_calib_3cm_threshold,ps_data.offset_max};
@@ -1403,6 +1403,8 @@ static int ps_external_ir_power_set(unsigned long mode)
 			}
 		}
 	}
+
+	return 0;
 }
 
 static ssize_t attr_ps_switch_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -1479,7 +1481,7 @@ static ssize_t attr_als_calibrate_show(struct device *dev, struct device_attribu
 	return snprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
-static int rgb_cal_result_write_file(char *filename, char *param)
+static int __maybe_unused rgb_cal_result_write_file(char *filename, char *param)
 {
 	struct file *fop = NULL;
 	mm_segment_t old_fs;
@@ -1528,7 +1530,7 @@ int write_als_offset_to_nv(char *temp)
 	return ret;
 }
 
-static void als_dark_noise_offset_enq_notify_work(const int item_id, uint16_t value,uint16_t min_threshold,uint16_t max_threshold)
+static void __maybe_unused als_dark_noise_offset_enq_notify_work(const int item_id, uint16_t value,uint16_t min_threshold,uint16_t max_threshold)
 {
 	#ifdef SENSOR_DATA_ACQUISITION
 	int ret = -1;
@@ -1556,7 +1558,7 @@ static int als_calibrate_save(const void *buf, int length)
 {
 	const uint16_t *poffset_data = (const uint16_t *)buf;
 	int ret = 0;
-	uint16_t *bh1745_als_cal_result = (uint16_t *) buf;
+	uint16_t *bh1745_als_cal_result __maybe_unused = (uint16_t *) buf;
 
 	if (buf == NULL || length <= 0) {
 		hwlog_err("%s invalid argument.", __func__);
@@ -1588,10 +1590,10 @@ static ssize_t attr_als_calibrate_write(struct device *dev, struct device_attrib
 	int ret = 0, i;
 	read_info_t pkg_mcu;
 	char content[CLI_CONTENT_LEN_MAX] = { 0 };
-	const uint16_t *cali_data_u16 = NULL;
+	const uint16_t *cali_data_u16 __maybe_unused = NULL;
 	const int32_t *als_cali_data = NULL;
-	const int32_t *minThreshold = NULL;
-	const int32_t *maxThreshold = NULL;
+	const int32_t *minThreshold __maybe_unused = NULL;
+	const int32_t *maxThreshold __maybe_unused = NULL;
 	char date_str[CLI_TIME_STR_LEN] = { 0 };
 	interval_param_t param;
 	#ifdef SENSOR_DATA_ACQUISITION

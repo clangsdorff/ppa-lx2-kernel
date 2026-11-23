@@ -683,7 +683,7 @@ static int unpack(const void *buf, unsigned int length)
 		     send_cnt += (MAX_SEND_LEN - sizeof(pkt_part_header_t))) {
 			((pkt_part_header_t *) send_partial_buf)->partial_order = partial_order++;	/*inc partial_order in partial pkt*/
 			memcpy(send_partial_buf + sizeof(pkt_part_header_t),
-			       (const char *)buf + send_cnt, min(MAX_SEND_LEN - sizeof(pkt_part_header_t), (int)length - send_cnt));
+			       (const char *)buf + send_cnt, min_t(size_t, MAX_SEND_LEN - sizeof(pkt_part_header_t), (int)length - send_cnt));
 			ret = inputhub_mcu_send(send_partial_buf, MAX_SEND_LEN);
 			if (ret != 0)
 				goto out;
@@ -1849,7 +1849,7 @@ static int process_sensors_report(const pkt_header_t* head)
 				sensor_event->xyz[0].x,sensor_event->xyz[0].y,sensor_event->xyz[0].z);
 			break;
 		case TAG_DROP:
-			process_drop_report(head);
+			process_drop_report((const pkt_drop_data_req_t *)head);
 			break;
 		default:
 			break;

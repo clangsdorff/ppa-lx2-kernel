@@ -291,7 +291,7 @@ extern int c_offset_b;
 #ifdef SENSOR_1V8_POWER
 extern int hw_extern_pmic_query_state(int index, int *state);
 #else
-static int hw_extern_pmic_query_state(int index, int *state);
+static int __maybe_unused hw_extern_pmic_query_state(int index, int *state);
 #endif
 
 extern int (*api_inputhub_mcu_recv) (const char *buf, unsigned int length);

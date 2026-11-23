@@ -1041,7 +1041,6 @@ void read_als_data_from_dts(struct device_node *dn)
 	int als_phone_type = 0;
 	int als_phone_version = 0;
 	int als_gain_dynamic = 0;
-	int als_always_open = 0;
 	int ret = 0;
 	char *chip_info = NULL;
 	read_chip_info(dn, ALS);
@@ -1987,7 +1986,7 @@ static void read_gps_4774_i2c_data_from_dts(struct device_node *dn)
 }
 //read gpio reg chip id;
 
-static void read_vibrator_from_dts(struct devce_node* dn)
+static void read_vibrator_from_dts(struct device_node *dn)
 {
 	int temp = 0, rc = 0;
 	read_chip_info(dn, VIBRATOR);
@@ -2376,7 +2375,7 @@ static int get_adapt_file_id_for_dyn_load(void)
 	return 0;
 }
 
-static void transfer_for_akm(uint8_t file_count, uint16_t *file_list)
+static void __maybe_unused transfer_for_akm(uint8_t file_count, uint16_t *file_list)
 {
   uint8_t gyro_detected = 0;
   uint8_t i;
@@ -4005,7 +4004,6 @@ static void redetect_failed_sensors(DETECT_MODE mode)
 	char *sensor_st = NULL;
 	struct device_node *dn = NULL;
 	const char *st = "disabled";
-	int i = 0;
 
 	for_each_node_with_property(dn, "sensor_type") {
 		//sensor type

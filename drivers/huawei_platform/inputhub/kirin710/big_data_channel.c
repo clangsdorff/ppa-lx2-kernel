@@ -169,10 +169,11 @@ static int process_big_data(uint32_t event_id, void* data)
 static int iomcu_big_data_process(const pkt_header_t *head)
 {
 	uint32_t *data;
+	pkt_big_data_report_t* report_t;
 	if(!head)
 		return -1;
 
-	pkt_big_data_report_t* report_t = (pkt_big_data_report_t *)head;
+	report_t = (pkt_big_data_report_t *)head;
 	data = (uint32_t *)&report_t[1];
 	switch(report_t->event_id){
 		case DUBAI_EVENT_AOD_PICKUP:
