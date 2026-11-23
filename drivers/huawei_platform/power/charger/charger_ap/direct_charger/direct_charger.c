@@ -983,8 +983,15 @@ static void direct_charge_send_max_power_uevent(void)
 {
 	struct direct_charge_device *l_di = direct_charge_get_di();
 
-	if (!l_di || l_di->ui_max_pwr <= 0)
+	if (!l_di)
 		return;
+
+	/* ppa dts has no ui_max_pwr; hos systemui needs max_power for the supercharge icon */
+	if (l_di->ui_max_pwr <= 0) {
+		if (l_di->max_pwr > 0)
+			power_ui_event_notify(POWER_UI_NE_MAX_POWER, &l_di->max_pwr);
+		return;
+	}
 
 	if (l_di->max_pwr >= l_di->ui_max_pwr)
 		power_ui_event_notify(POWER_UI_NE_MAX_POWER, &l_di->ui_max_pwr);
