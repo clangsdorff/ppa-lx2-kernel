@@ -1041,9 +1041,11 @@ struct batt_dsm batt_dsm_array[] = {
 static void hisi_get_error_info(struct hisi_bci_device_info *di)
 {
 	int i;
-	char buf[DSM_BATTERY_MAX_SIZE];
+	char *buf;
 
-	memset(buf, 0, sizeof(buf));
+	buf = kzalloc(DSM_BATTERY_MAX_SIZE, GFP_KERNEL);
+	if (!buf)
+		return;
 	for (i = 0; i < (sizeof(batt_dsm_array) / sizeof(struct batt_dsm)); ++i) {/*lint !e574*/
 		if (batt_dsm_array[i].notify_enable
 				&& (BAT_BOARD_ASIC == is_board_type)) {
@@ -1072,6 +1074,7 @@ static void hisi_get_error_info(struct hisi_bci_device_info *di)
 			}
 		}
 	}
+	kfree(buf);
 }
 #endif
 #pragma GCC diagnostic pop

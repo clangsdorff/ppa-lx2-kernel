@@ -75,7 +75,7 @@ static void asw_protect_wake_unlock(void)
  *
  * Input raw battery modeling  print for debug
  */
-static void asw_print_battery_data(struct hisi_coul_battery_data *pdat)
+static noinline_for_stack void asw_print_battery_data(struct hisi_coul_battery_data *pdat)
 {
 	int i;
 	int j;
