@@ -387,8 +387,9 @@ exit:
 
 void tcp_twsk_destructor(struct sock *sk)
 {
-	struct tcp_timewait_sock *twsk = tcp_twsk(sk);
 #ifdef CONFIG_MPTCP
+	struct tcp_timewait_sock *twsk = tcp_twsk(sk);
+
 	if (twsk->mptcp_tw)
 		mptcp_twsk_destructor(twsk);
 #endif

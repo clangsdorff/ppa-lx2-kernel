@@ -33,20 +33,6 @@ static struct gpio_desc lp8556_hw_en_on_cmds[] = {
 		GPIO_LP8556_EN_NAME, &lp8556_bl_info.lp8556_hw_en_gpio, 1},
 };
 
-static struct gpio_desc lp8556_hw_en_disable_cmds[] =
-{
-	{DTYPE_GPIO_OUTPUT, WAIT_TYPE_US, 0,
-		GPIO_LP8556_EN_NAME, &lp8556_bl_info.lp8556_hw_en_gpio, 0},
-	{DTYPE_GPIO_INPUT, WAIT_TYPE_US, 10,
-		GPIO_LP8556_EN_NAME, &lp8556_bl_info.lp8556_hw_en_gpio, 0},
-};
-
-static struct gpio_desc lp8556_hw_en_free_cmds[] =
-{
-	{DTYPE_GPIO_FREE, WAIT_TYPE_US, 50,
-		GPIO_LP8556_EN_NAME, &lp8556_bl_info.lp8556_hw_en_gpio, 0},
-};
-
 static char *lp8556_dts_string[LP8556_RW_REG_MAX] = {
 	"lp8556_device_control",
 	"lp8556_eprom_cfg0",

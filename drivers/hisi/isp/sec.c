@@ -2694,14 +2694,12 @@ void free_secmem_rsctable(void)
 static void hisp_get_static_mem_pa(unsigned int type)
 {
 	struct hisi_atfisp_s *dev = (struct hisi_atfisp_s *)&atfisp_dev;
-	void *va = 0;
-
 	switch (type) {
 	case HISP_SEC_VR0:
 	case HISP_SEC_VR1:
 	case HISP_SEC_VQ:
-		va = get_vring_dma_addr(&dev->static_mem[type].pa,
-					dev->static_mem[type].size, type);
+		get_vring_dma_addr(&dev->static_mem[type].pa,
+				   dev->static_mem[type].size, type);
 		break;
 	case HISP_SEC_SHARE:
 		dev->static_mem[type].pa = get_a7shared_pa();

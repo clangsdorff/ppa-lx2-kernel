@@ -919,7 +919,7 @@ static void row_merged_requests(struct request_queue *q, struct request *rq,
 /*
  * row_get_current() - Get the current running thread
  */
-static struct task_struct *row_get_current(void)
+static struct task_struct * __maybe_unused row_get_current(void)
 {
 	return current;
 }
@@ -1032,7 +1032,7 @@ static ssize_t row_var_store(unsigned long *var, const char *page, size_t count)
 }
 
 #define SHOW_FUNCTION(__FUNC, __VAR)				\
-static ssize_t __FUNC(struct elevator_queue *e, char *page)		\
+static ssize_t __maybe_unused __FUNC(struct elevator_queue *e, char *page)		\
 {									\
 	struct row_data *rowd = e->elevator_data;			\
 	int __data = __VAR;						\
@@ -1066,7 +1066,7 @@ SHOW_FUNCTION(row_low_starv_limit_show,
 #undef SHOW_FUNCTION
 
 #define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX)			\
-static ssize_t __FUNC(struct elevator_queue *e,				\
+static ssize_t __maybe_unused __FUNC(struct elevator_queue *e,				\
 		const char *page, size_t count)				\
 {									\
 	struct row_data *rowd = e->elevator_data;			\

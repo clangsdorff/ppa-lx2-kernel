@@ -343,7 +343,7 @@ static void sdhci_combo_phy_delay_measurement(
 	pr_info("eMMC phy delay measurement done\n");
 }
 
-static void sdhci_set_pinctrl(struct sdhci_host *host, u32 reg)
+static void __maybe_unused sdhci_set_pinctrl(struct sdhci_host *host, u32 reg)
 {
 	u32 val;
 
@@ -417,15 +417,17 @@ int sdhci_mshc_resume_then_tuning_move(struct device *dev)
 
 		pr_err("resume,host_clock = %u, mmc_clock = %u\n", host->clock, host->mmc->ios.clock);
 	}
+
+	return 0;
 }
 #endif
 
-static void sdhci_mshc_od_enable(struct sdhci_host *host)
+static void __maybe_unused sdhci_mshc_od_enable(struct sdhci_host *host)
 {
 	pr_debug("%s: end!\n", __func__);
 }
 
-static int sdhci_disable_open_drain(struct sdhci_host *host)
+static int __maybe_unused sdhci_disable_open_drain(struct sdhci_host *host)
 {
 	pr_debug("%s\n", __func__);
 	return 0;
@@ -485,7 +487,7 @@ static int sdhci_chk_busy_before_send_cmd(
 	return 0;
 }
 
-static void sdhci_mshc_set_version(struct sdhci_host *host)
+static void __maybe_unused sdhci_mshc_set_version(struct sdhci_host *host)
 {
 	u16 ctrl;
 

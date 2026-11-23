@@ -1576,7 +1576,6 @@ static void start_channel(struct slimbus_device_info *dev, struct slimbus_channe
 {
 	struct slimbus_channel_property *active_channel = NULL;
 	uint32_t active_ch_num = 0;
-	enum slimbus_presence_rate rate;
 	enum slimbus_transport_protocol tp;
 	uint32_t ret = 0;
 	uint32_t i;
@@ -1602,7 +1601,6 @@ static void start_channel(struct slimbus_device_info *dev, struct slimbus_channe
 				ret += csmi_drv->msgNextDefineContent(devm_slimbus_priv, active_channel[j].cn,
 					active_channel[j].fl, (CSMI_PresenceRate)active_channel[j].pr, (CSMI_AuxFieldFormat)active_channel[j].af,
 					(CSMI_DataType)active_channel[j].dt, active_channel[j].cl, active_channel[j].dl);
-				rate = active_channel[j].pr;
 				tp = active_channel[j].tp;
 
 				ret += set_presence_rate_generation_by_tp(tp);

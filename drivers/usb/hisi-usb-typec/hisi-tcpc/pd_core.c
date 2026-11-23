@@ -221,7 +221,10 @@ static int dpm_alt_mode_parse_svid_data(
 
 static void pd_core_parse_svid_data(pd_port_t *pd_port)
 {
-	int ret, i = 0;
+	int i = 0;
+#ifdef CONFIG_USB_PD_ALT_MODE_SUPPORT
+	int ret;
+#endif
 
 	/* TODO: dynamic allocate svid_data from DTS */
 	D("+\n");

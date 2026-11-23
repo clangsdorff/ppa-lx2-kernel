@@ -243,16 +243,17 @@ SINT32 h264hal_startdec(omxvdh_reg_cfg_s *vdh_reg_cfg)
 {
 	UINT32 d32;
 
-	if (vdh_reg_cfg == NULL) {
-		dprint(PRN_FATAL, "vdh_reg_cfg is null\n");
-		return VDMHAL_ERR;
-	}
 #ifdef MSG_POOL_ADDR_CHECK
 	SINT32 ret;
 	UINT32 pic_height_mb;
 	UINT32 pic_width_mb;
 	vdmhal_hwmem_s *hw_mem = &g_hw_mem[0];
 #endif
+
+	if (vdh_reg_cfg == NULL) {
+		dprint(PRN_FATAL, "vdh_reg_cfg is null\n");
+		return VDMHAL_ERR;
+	}
 
 	dprint(PRN_VDMREG,
 		"\n***********************h264hal_startdec ***********************\n");

@@ -238,7 +238,9 @@ f2fs_get_ece_crypt_info_from_context(struct inode *inode,
 	u32 flag = 0;
 	u8  iv[FS_KEY_DERIVATION_IV_SIZE] = { 0x00 };
 	u8  fek[FS_KEY_DERIVATION_CIPHER_SIZE];
+#ifdef CONFIG_SCSI_UFS_ENHANCED_INLINE_CRYPTO_V2
 	int keyindex;
+#endif
 
 	if (inherit_key) {
 		res = f2fs_do_get_fek(ctx->master_key_descriptor, ctx->nonce, fek,
@@ -450,7 +452,9 @@ f2fs_get_sece_crypt_info_from_context(struct inode *inode,
 	u8  iv[FS_KEY_DERIVATION_IV_SIZE] = { 0x00 };
 	u8  fek[FS_KEY_DERIVATION_CIPHER_SIZE];
 	u32 flag = 0;
+#ifdef CONFIG_SCSI_UFS_ENHANCED_INLINE_CRYPTO_V2
 	int keyindex;
+#endif
 
 	if (inherit_key) {
 		res = f2fs_do_get_fek(ctx->master_key_descriptor, ctx->nonce, fek,

@@ -887,7 +887,7 @@ static int hw_mp3336_mix_ir_off(struct hw_flash_ctrl_t *flash_ctrl)
     cam_debug("%s enter.", __func__);
 
     pdata = (struct hw_mp3336_mix_ir_private_data_t *)flash_ctrl->pdata;
-    cdata.mode = SINGLE_STANDBY_MODE;
+    cdata.mode = STANDBY_MODE;
     cdata.data = MP3336_STANDBY_MODE_CUR;//set standby current as 0
 
     mutex_lock(flash_ctrl->hw_flash_mutex);

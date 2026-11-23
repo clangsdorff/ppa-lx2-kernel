@@ -1580,7 +1580,8 @@ static int parse_vth_correct_dts(const struct device_node *np, struct hisi_bci_d
 
 	if (of_property_read_u32_array(np, "vth_correct_para",
 				       (u32 *)&di->vth_correct_data[0],
-				       sizeof(di->vth_correct_data) / sizeof(int))) {
+				       ARRAY_SIZE(di->vth_correct_data) *
+				       (sizeof(di->vth_correct_data[0]) / sizeof(int)))) {
 		di->vth_correct_en = 0;
 		bci_err("get vth_correct_para fail!!\n");
 		return -EINVAL;

@@ -270,15 +270,18 @@ SINT32 hevchal_startdec(omxvdh_reg_cfg_s *vdh_reg_cfg)
 {
 	SINT32 ret;
 
-	if (vdh_reg_cfg == NULL) {
-		dprint(PRN_FATAL, "vdh_reg_cfg is null");
-		return VDMHAL_ERR;
-	}
 #ifdef MSG_POOL_ADDR_CHECK
 	UINT32 pic_height;
 	UINT32 pic_width;
 	vdmhal_hwmem_s *hw_mem = NULL;
+#endif
 
+	if (vdh_reg_cfg == NULL) {
+		dprint(PRN_FATAL, "vdh_reg_cfg is null");
+		return VDMHAL_ERR;
+	}
+
+#ifdef MSG_POOL_ADDR_CHECK
 	if (vdh_mem_map == NULL) {
 		dprint(PRN_FATAL, "vdh_mem_map is null");
 		return VDMHAL_ERR;

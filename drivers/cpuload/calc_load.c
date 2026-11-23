@@ -427,7 +427,9 @@ static int get_threhold_bytype(int type)
 
 static void high_load_tickfn(struct work_struct *work);
 static void cpus_procstatic_tickfn(struct work_struct *work);
+#ifdef CONFIG_HISI_FREQ_STATS_COUNTING_IDLE
 static void high_freqs_load_tick(void);
+#endif
 
 static void high_load_count_reset(void)
 {
@@ -751,6 +753,7 @@ bool high_load_tick_mask(unsigned long bits, int type,
 	return false;
 }
 
+#ifdef CONFIG_HISI_FREQ_STATS_COUNTING_IDLE
 static void high_freqs_load_tick(void)
 {
 	u64 delta_time;
@@ -767,7 +770,6 @@ static void high_freqs_load_tick(void)
 	delta_time = ktime_us_delta(now, last);
 	last = now;
 
-#ifdef CONFIG_HISI_FREQ_STATS_COUNTING_IDLE
 	ret_err = hisi_time_in_freq_get(CONFIG_NR_CPUS - 1,
 		freqs_time, freqs_len);
 
@@ -791,8 +793,8 @@ static void high_freqs_load_tick(void)
 		set_action_ctl(CLUSTER_BIG, false);
 		last_status[CLUSTER_BIG] = LOW_LOAD;
 	}
-#endif
 }
+#endif
 
 static void get_current_task_mask(int type)
 {

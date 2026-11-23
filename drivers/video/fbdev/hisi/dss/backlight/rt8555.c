@@ -31,7 +31,6 @@
 
 static bool g_rt8555_used;
 static bool g_init_status;
-static bool bl_set_slope_status;
 static struct class *g_rt_class;
 static struct rt8555_chip_data *g_rtdev;
 static struct rt8555_info g_bl_info;
@@ -43,19 +42,6 @@ static struct gpio_desc g_gpio_on_cmds[] = {
 	{ DTYPE_GPIO_OUTPUT, WAIT_TYPE_MS,
 		DELAY_5_MS, GPIO_RT8555_EN_NAME,
 		&g_bl_info.rt8555_hw_en_gpio, 1 },
-};
-static struct gpio_desc g_gpio_disable_cmds[] = {
-	{ DTYPE_GPIO_OUTPUT, WAIT_TYPE_US,
-		DELAY_0_US, GPIO_RT8555_EN_NAME,
-		&g_bl_info.rt8555_hw_en_gpio, 0 },
-	{ DTYPE_GPIO_INPUT, WAIT_TYPE_US,
-		DELAY_10_US, GPIO_RT8555_EN_NAME,
-		&g_bl_info.rt8555_hw_en_gpio, 0 },
-};
-static struct gpio_desc g_gpio_free_cmds[] = {
-	{ DTYPE_GPIO_FREE, WAIT_TYPE_US,
-		DELAY_50_US, GPIO_RT8555_EN_NAME,
-		&g_bl_info.rt8555_hw_en_gpio, 0 },
 };
 static char *g_dts_str[RT8555_RW_REG_MAX] = {
 	"rt8555_control_mode",       /* register 0x00 */

@@ -270,7 +270,9 @@ static const struct file_operations hide_syms_fops = {
 static __init int initialize_blacklist(void)
 {
 	int i;
+#ifdef CONFIG_CFI_CLANG
 	char blacklist_cfi[SYM_NAME_LEN];
+#endif
 	struct symbol_node *node = NULL;
 
 	for (i = 0; i < MAX_HIDESYMS_NUM; i++) {

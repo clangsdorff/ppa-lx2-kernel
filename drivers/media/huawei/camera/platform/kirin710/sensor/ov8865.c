@@ -510,7 +510,7 @@ static int ov8865_match_id(hwsensor_intf_t *si, void *data)
 {
 	sensor_t *sensor = I2S(si);
 	struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
-	char *sensor_name[] = {"OV8865_2L"};
+	const char *sensor_name = "OV8865_2L";
 	int ret;
 
 	cam_info("%s enter", __func__);

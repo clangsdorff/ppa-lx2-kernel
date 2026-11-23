@@ -267,12 +267,13 @@ static void pcs_pin_dbg_show(struct pinctrl_dev *pctldev,
 {
 	struct pcs_device *pcs;
 	unsigned val, mux_bytes;
-	unsigned long offset;
-	size_t pa;
 #if defined CONFIG_HISI_PINCRTL_INFO
 	struct pcs_gpiofunc_range *frange = NULL;
 	struct list_head *pos = NULL;
 	struct list_head *tmp = NULL;
+#else
+	unsigned long offset;
+	size_t pa;
 #endif
 	pcs = pinctrl_dev_get_drvdata(pctldev);
 #if defined CONFIG_HISI_PINCRTL_INFO

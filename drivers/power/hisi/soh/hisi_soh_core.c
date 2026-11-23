@@ -613,7 +613,7 @@ static int parse_soh_ovp_dts(struct hisi_soh_device *di)
 	}
 
 	/*get ovp discharge  threshold*/
-	ret = of_property_read_u32_array(np, "soh_ovh_thd", (u32 *)&di->soh_ovp_dev.soh_ovh_thres[0], sizeof(di->soh_ovp_dev.soh_ovh_thres)/sizeof(int));
+	ret = of_property_read_u32_array(np, "soh_ovh_thd", (u32 *)&di->soh_ovp_dev.soh_ovh_thres[0], ARRAY_SIZE(di->soh_ovp_dev.soh_ovh_thres) * (sizeof(di->soh_ovp_dev.soh_ovh_thres[0])/sizeof(int)));
 	if (ret) {
 		err = memcpy_s(&di->soh_ovp_dev.soh_ovh_thres, sizeof(default_ovh_thres), &default_ovh_thres[0], sizeof(default_ovh_thres));
 		if(err != EOK) {
@@ -627,7 +627,7 @@ static int parse_soh_ovp_dts(struct hisi_soh_device *di)
 		      di->soh_ovp_dev.soh_ovh_thres[2].temp,di->soh_ovp_dev.soh_ovh_thres[2].bat_vol_mv);
 
 	/*get ovp stop discharge threshold*/
-	ret = of_property_read_u32_array(np, "soh_ovl_thd", (u32 *)&di->soh_ovp_dev.soh_ovl_thres[0], sizeof(di->soh_ovp_dev.soh_ovl_thres)/sizeof(int));
+	ret = of_property_read_u32_array(np, "soh_ovl_thd", (u32 *)&di->soh_ovp_dev.soh_ovl_thres[0], ARRAY_SIZE(di->soh_ovp_dev.soh_ovl_thres) * (sizeof(di->soh_ovp_dev.soh_ovl_thres[0])/sizeof(int)));
 	if (ret) {
 		err = memcpy_s(&di->soh_ovp_dev.soh_ovl_thres, sizeof(default_ovl_thres), &default_ovl_thres[0], sizeof(default_ovl_thres));
 		if(err != EOK) {

@@ -182,14 +182,17 @@ SINT32 mp4hal_startdec(omxvdh_reg_cfg_s *vdh_reg_cfg)
 {
 	SINT32 ret;
 
+#ifdef MSG_POOL_ADDR_CHECK
+	UINT32 pic_height_mb;
+	UINT32 pic_width_mb;
+#endif
+
 	if (vdh_reg_cfg == NULL) {
 		dprint(PRN_FATAL, "vdh_reg_cfg is null\n");
 		return VDMHAL_ERR;
 	}
-#ifdef MSG_POOL_ADDR_CHECK
-	UINT32 pic_height_mb;
-	UINT32 pic_width_mb;
 
+#ifdef MSG_POOL_ADDR_CHECK
 	if (vdh_mem_map == NULL) {
 		dprint(PRN_FATAL, "vdh_mem_map is null\n");
 		return VDMHAL_ERR;

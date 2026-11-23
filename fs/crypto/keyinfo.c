@@ -299,7 +299,7 @@ select_encryption_mode(const struct fscrypt_info *ci, const struct inode *inode)
 	return ERR_PTR(-EINVAL);
 }
 
-static int determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
+static int __maybe_unused determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
 				 const char **cipher_str_ret, int *keysize_ret)
 {
 	u32 mode;

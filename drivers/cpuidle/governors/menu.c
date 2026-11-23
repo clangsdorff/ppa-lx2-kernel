@@ -201,8 +201,6 @@ struct menu_device {
 #define SKIP_DEEP_CSTATE_MAX_INTERVAL_US (2000)
 #endif
 
-#define BIT(nr) (1UL << (nr))
-
 /* 60 * 60 > STDDEV_THRESH * INTERVALS = 400 * 8 */
 #define MAX_DEVIATION 60
 static DEFINE_PER_CPU(int, hrtimer_status); //lint !e129

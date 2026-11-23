@@ -281,7 +281,6 @@ int kernel_dump_init(void)
     unsigned int i, j;
     phys_addr_t mem_ret;
     struct kernel_dump_cb *cb = NULL;
-    struct memblock_type *print_mb_cb = NULL;
     struct proc_dir_entry *proc_dir_entry = NULL;
 
     if (register_mntn_dump(MNTN_DUMP_KERNEL_DUMP, sizeof(struct kernel_dump_cb), (void **)&cb)) {
@@ -333,7 +332,6 @@ int kernel_dump_init(void)
     cb->ttbr = virt_to_phys(init_mm.pgd);
 
     cb->mb_cb = (struct memblock_type *)(uintptr_t)virt_to_phys(&memblock.memory);
-    print_mb_cb = &memblock.memory;
     cb->mbr_size = sizeof(struct memblock_region);
 
     cb->text_kaslr_offset = (uintptr_t)_text - (KIMAGE_VADDR + TEXT_OFFSET); /*lint !e648*/

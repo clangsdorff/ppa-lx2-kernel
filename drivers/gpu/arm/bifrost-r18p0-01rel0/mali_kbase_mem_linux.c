@@ -257,10 +257,10 @@ void kbase_phy_alloc_mapping_put(struct kbase_context *kctx,
 
 static unsigned int kbase_mem_get_group_id(struct kbase_context *kctx, u64 *flags)
 {
-	int i = 0;
 	unsigned int group_id = 0;
 
 #ifdef CONFIG_MALI_LAST_BUFFER
+	int i = 0;
 	/* Get group_id corresponding to the cache_policy if last buffer enabled. */
 	u8 policy = 0;
 	struct kbase_device *kbdev = kctx->kbdev;
