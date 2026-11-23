@@ -38,10 +38,18 @@
 #include <soc_sctrl_interface.h>
 #include <linux/hisi/hisi_log.h>
 #include <linux/pm.h>
+#include <linux/fs.h>
+#include <linux/blkdev.h>
+#include <linux/genhd.h>
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
 #define HISI_LOG_TAG HISI_POWEROFF_TAG
 #define IOMAP_ADD_INDEX 0
 #define POWERHOLD_PROTECT_BIT_OFFSET 16
 #define POWERHOLD_GPIO_BIT_OFFSET 2
+#define BOOT0_BDEV_PATH "/dev/block/mmcblk0boot0"
+#define BOOT0_VRL_ZERO_SECTORS 8
+#define SCTRL_SCSYSSTAT_RESET_VAL 0xdeadbeef
 
 
 static void __iomem *powerhold_gpio_base = NULL;
@@ -55,6 +63,109 @@ static unsigned int g_powerhold_protect_bit = 0xFF;
 #endif
 
 static void __iomem *sysctrl_base = NULL;
+static int g_force_bootrom_reset;
+static int g_bootrom_armed;
+
+static bool hisi_is_bootrom_cmd(const char *cmd)
+{
+	if (!cmd)
+		return false;
+	return !strcmp(cmd, "bootrom") || !strcmp(cmd, "vcom");
+}
+
+static struct block_device *hisi_open_boot0_bdev(fmode_t mode)
+{
+	dev_t devt = blk_lookup_devt("mmcblk0boot0", 0);
+
+	if (devt)
+		return blkdev_get_by_dev(devt, mode, NULL);
+	return blkdev_get_by_path(BOOT0_BDEV_PATH, mode, NULL);
+}
+
+static int hisi_invalidate_boot0_xloader(void)
+{
+	struct block_device *bdev;
+	int ret;
+
+	bdev = hisi_open_boot0_bdev(FMODE_READ);
+	if (IS_ERR(bdev)) {
+		BB_PRINT_ERR("%s: open ro %s failed: %ld\n",
+			__func__, BOOT0_BDEV_PATH, PTR_ERR(bdev));
+		return PTR_ERR(bdev);
+	}
+	if (bdev->bd_disk)
+		set_disk_ro(bdev->bd_disk, 0);
+	blkdev_put(bdev, FMODE_READ);
+
+	bdev = hisi_open_boot0_bdev(FMODE_READ | FMODE_WRITE);
+	if (IS_ERR(bdev)) {
+		BB_PRINT_ERR("%s: open rw %s failed: %ld\n",
+			__func__, BOOT0_BDEV_PATH, PTR_ERR(bdev));
+		return PTR_ERR(bdev);
+	}
+
+	ret = blkdev_issue_zeroout(bdev, 0, BOOT0_VRL_ZERO_SECTORS,
+		GFP_KERNEL, BLKDEV_ZERO_NOUNMAP);
+	if (ret) {
+		BB_PRINT_ERR("%s: zeroout %s failed: %d\n",
+			__func__, BOOT0_BDEV_PATH, ret);
+	} else {
+		sync_blockdev(bdev);
+		g_bootrom_armed = 1;
+		pr_info("%s: invalidated xloader VRL header on %s\n",
+			__func__, BOOT0_BDEV_PATH);
+	}
+
+	blkdev_put(bdev, FMODE_READ | FMODE_WRITE);
+	return ret;
+}
+
+static int hisi_bootrom_reboot_notify(struct notifier_block *nb,
+	unsigned long action, void *data)
+{
+	const char *cmd = data;
+
+	if (hisi_is_bootrom_cmd(cmd) || g_force_bootrom_reset) {
+		g_force_bootrom_reset = 1;
+		hisi_invalidate_boot0_xloader();
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block hisi_bootrom_reboot_nb = {
+	.notifier_call = hisi_bootrom_reboot_notify,
+	.priority = INT_MAX,
+};
+
+static ssize_t bootrom_reboot_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "armed=%d\n", g_bootrom_armed);
+}
+
+static ssize_t bootrom_reboot_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+
+	if (sysfs_streq(buf, "arm")) {
+		ret = hisi_invalidate_boot0_xloader();
+		return ret ? ret : count;
+	}
+	if (sysfs_streq(buf, "1") || sysfs_streq(buf, "now") ||
+	    sysfs_streq(buf, "bootrom")) {
+		g_force_bootrom_reset = 1;
+		ret = hisi_invalidate_boot0_xloader();
+		if (ret)
+			return ret;
+		kernel_restart("bootrom");
+		return count;
+	}
+	return -EINVAL;
+}
+
+static struct kobj_attribute bootrom_reboot_attr =
+	__ATTR(bootrom_reboot, 0600, bootrom_reboot_show, bootrom_reboot_store);
 
 
 static void chear_powerhold_protect(void)
@@ -109,6 +220,7 @@ static void hisi_pm_system_off(void)
  */
 static void hisi_pm_system_reset(enum reboot_mode mode, const char *cmd)
 {
+	bool bootrom_req = g_force_bootrom_reset || hisi_is_bootrom_cmd(cmd);
 #ifdef CONFIG_HISI_BB
 	unsigned int i;
 	unsigned int curr_reboot_type = UNKNOWN;
@@ -135,12 +247,18 @@ static void hisi_pm_system_reset(enum reboot_mode mode, const char *cmd)
 	}
 	if (curr_reboot_type == UNKNOWN) {
 		curr_reboot_type = COLDBOOT;
-		console_verbose();
-		dump_stack();
+		if (!bootrom_req) {
+			console_verbose();
+			dump_stack();
+		}
 	}
 	set_reboot_reason(curr_reboot_type);
 	hisiap_nmi_notify_lpm3();
 #endif
+	if (bootrom_req && sysctrl_base != NULL) {
+		mdelay(50);
+		writel(SCTRL_SCSYSSTAT_RESET_VAL, SOC_SCTRL_SCSYSSTAT_ADDR(sysctrl_base));
+	}
 	BB_PRINT_PN("ap send nmi to lpm3, then goto dead loop\n");
 	while (1)
 		;
@@ -203,11 +321,22 @@ static int hi3xxx_reset_probe(struct platform_device *pdev)
 	pm_power_off = hisi_pm_system_off;
 	arm_pm_restart = hisi_pm_system_reset;
 
+	ret = register_reboot_notifier(&hisi_bootrom_reboot_nb);
+	if (ret)
+		BB_PRINT_ERR("%s: register_reboot_notifier failed: %d\n", __func__, ret);
+
+	ret = sysfs_create_file(kernel_kobj, &bootrom_reboot_attr.attr);
+	if (ret)
+		BB_PRINT_ERR("%s: sysfs_create_file bootrom_reboot failed: %d\n", __func__, ret);
+
 	return 0;
 }
 
 static int hi3xxx_reset_remove(struct platform_device *pdev)
 {
+	sysfs_remove_file(kernel_kobj, &bootrom_reboot_attr.attr);
+	unregister_reboot_notifier(&hisi_bootrom_reboot_nb);
+
 	if (pm_power_off == hisi_pm_system_off)
 		pm_power_off = NULL;
 
