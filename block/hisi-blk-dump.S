@@ -1,3 +1,7 @@
+	.if 0
+	___EXPORT_SYMBOL blk_mq_tagset_dump_register, ""
+	___EXPORT_SYMBOL blk_queue_dump_register, ""
+	.endif
 	.text
 	.file	"hisi-blk-dump.c"
                                         // Start of file scope inline assembly

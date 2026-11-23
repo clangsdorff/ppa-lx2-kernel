@@ -1,3 +1,7 @@
+	.if 0
+	___EXPORT_SYMBOL blk_mq_tagset_latency_warning_set, ""
+	___EXPORT_SYMBOL blk_queue_latency_warning_set, ""
+	.endif
 	.text
 	.file	"hisi-blk-latency.c"
                                         // Start of file scope inline assembly

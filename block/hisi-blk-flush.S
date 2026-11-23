@@ -1,3 +1,12 @@
+	.if 0
+	___EXPORT_SYMBOL blk_power_off_flush, "_gpl"
+	___EXPORT_SYMBOL blk_mq_tagset_direct_flush_register, "_gpl"
+	___EXPORT_SYMBOL blk_flush_set_async, "_gpl"
+	___EXPORT_SYMBOL blk_queue_direct_flush_register, "_gpl"
+	___EXPORT_SYMBOL blk_queue_flush_reduce_config, "_gpl"
+	___EXPORT_SYMBOL blk_mq_tagset_flush_reduce_config, "_gpl"
+	___EXPORT_SYMBOL blk_flush_async_support, "_gpl"
+	.endif
 	.text
 	.file	"hisi-blk-flush.c"
                                         // Start of file scope inline assembly

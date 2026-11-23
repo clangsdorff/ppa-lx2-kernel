@@ -1,3 +1,8 @@
+	.if 0
+	___EXPORT_SYMBOL blk_queue_set_inline_crypto_flag, ""
+	___EXPORT_SYMBOL is_blk_queue_support_crypto, ""
+	___EXPORT_SYMBOL blk_generic_freeze, ""
+	.endif
 	.text
 	.file	"hisi-blk-core.c"
                                         // Start of file scope inline assembly

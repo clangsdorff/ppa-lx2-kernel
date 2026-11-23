@@ -1,3 +1,13 @@
+	.if 0
+	___EXPORT_SYMBOL blk_busy_idle_event_subscriber, ""
+	___EXPORT_SYMBOL blk_queue_busy_idle_event_subscriber, ""
+	___EXPORT_SYMBOL blk_lld_busy_idle_event_subscriber, ""
+	___EXPORT_SYMBOL blk_busy_idle_event_unsubscriber, ""
+	___EXPORT_SYMBOL blk_queue_busy_idle_event_unsubscriber, ""
+	___EXPORT_SYMBOL blk_queue_busy_idle_enable, ""
+	___EXPORT_SYMBOL blk_mq_tagset_busy_idle_enable, ""
+	___EXPORT_SYMBOL blk_mq_tagset_hw_idle_notify_enable, ""
+	.endif
 	.text
 	.file	"hisi-blk-busy-idle-notify.c"
                                         // Start of file scope inline assembly

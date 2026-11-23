@@ -1,3 +1,6 @@
+	.if 0
+	___EXPORT_SYMBOL blk_mq_tagset_ufs_mq_iosched_enable, ""
+	.endif
 	.text
 	.file	"hisi-blk-iosched-ufs-mq.c"
                                         // Start of file scope inline assembly
