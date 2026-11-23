@@ -250,24 +250,6 @@ static int calc_capacity_from_voltage(void)
 	return data;
 }
 
-/*only charge-work can not reach full(95%).Change capacity to full after 40min.*/
-static int hisi_force_full_timer(int curr_capacity,
-				 struct hisi_bci_device_info *di)
-{
-	if (curr_capacity > (int)di->chg_full_rpt_thr) {
-		di->charge_full_count++;
-		if (di->charge_full_count >= di->chg_full_wait_times) {
-			bci_info("FORCE_CHARGE_FULL = %d\n", curr_capacity);
-			di->charge_full_count = di->chg_full_wait_times;
-			curr_capacity = CAPACITY_FULL;
-		}
-	} else {
-		di->charge_full_count = 0;
-	}
-
-	return curr_capacity;
-}
-
 static int hisi_capacity_pulling_filter(int curr_capacity,
 					struct hisi_bci_device_info *di)
 {
@@ -385,11 +367,7 @@ static int capacity_changed(struct hisi_bci_device_info *di)
 		curr_capacity = calc_capacity_from_voltage();
 	} else {
 		cap = hisi_bci_capacity();
-		if (POWER_SUPPLY_STATUS_CHARGING == di->charge_status) {
-			curr_capacity = DIV_ROUND_CLOSEST((cap*100), di->bci_soc_at_term);
-		} else {
-			curr_capacity = cap;
-		}
+		curr_capacity = cap;
 		if (curr_capacity > CAPACITY_FULL ) {
 			curr_capacity = CAPACITY_FULL;
 		}
@@ -443,18 +421,7 @@ static int capacity_changed(struct hisi_bci_device_info *di)
 
 	switch (di->charge_status) {
 	case POWER_SUPPLY_STATUS_CHARGING:
-		curr_capacity = hisi_force_full_timer(curr_capacity, di);
-		break;
-
 	case POWER_SUPPLY_STATUS_FULL:
-		if (hisi_battery_current_avg() >= 0) {
-			/* if multi battery, get MAX voltage */
-			if (hw_battery_voltage(BAT_ID_MAX) >=
-					(di->bat_max_volt - RECHG_PROTECT_THRESHOLD)) {
-				curr_capacity = CAPACITY_FULL;
-				bci_info("Force soc=100\n");
-			}
-		}
 		di->charge_full_count = 0;
 		break;
 
@@ -1404,9 +1371,7 @@ static int hisi_bci_battery_get_property(struct power_supply *psy,
 		scp_status = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
-		val->intval = hisi_battery_cc();
-		val->intval = abs(val->intval) + 1;
-		val->intval *= 1000; /* 1000 is the unit of mah to uah */
+		val->intval = di->bat_rm * 1000;
 		break;
 	case POWER_SUPPLY_PROP_BAT_QMAX:
 		val->intval = hisi_battery_get_qmax();

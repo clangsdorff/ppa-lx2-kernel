@@ -4356,7 +4356,6 @@ static int calculate_state_of_charge(struct smartstar_coul_device *di)
 	int cc_uah;
 	int rbatt;
 	int soc_no_uuc, soc_before_adjust, soc_before_limit;
-	bool soc_at_term_flag = true ;
 
 	if (NULL == di) {
 		coul_core_err("NULL point in [%s]\n", __func__);
@@ -4384,23 +4383,12 @@ static int calculate_state_of_charge(struct smartstar_coul_device *di)
 
 	di->rbatt = rbatt;
 
-	if (di->enable_current_full) {
-		fcc_uah = current_full_adjust_limit_fcc(di);
-		soc_at_term_flag = false;
-	} else  {
-		if (di->batt_limit_fcc && di->batt_limit_fcc < fcc_uah * di->soc_at_term / 100) {
-			soc_at_term_flag = false;
-			coul_core_info("FCC =%duAh term flag= %d\n", fcc_uah, soc_at_term_flag);
-		}
+	if (di->enable_current_full)
+		current_full_adjust_limit_fcc(di);
 
-		if (di->batt_limit_fcc && di->batt_limit_fcc < fcc_uah) {
-			fcc_uah = di->batt_limit_fcc;
-			coul_core_info("use limit_FCC! %duAh\n", fcc_uah);
-		}
-	}
 	/* 100 is to fit the percentage */
 	if (fcc_uah < 100)
-		fcc_uah = di->batt_fcc * di->soc_at_term / 100;
+		fcc_uah = di->batt_fcc;
 	soc = DIV_ROUND_CLOSEST((remaining_charge_uah - cc_uah), (fcc_uah / 100));
 
 	soc_no_uuc = soc;
@@ -4412,13 +4400,8 @@ static int calculate_state_of_charge(struct smartstar_coul_device *di)
 	if (fcc_uah - unusable_charge_uah <= 0) {
 		soc = 0;
 	} else {
-		if ((100 == di->soc_at_term) || !soc_at_term_flag) {
-			soc = DIV_ROUND_CLOSEST((remaining_usable_charge_uah),
-						((fcc_uah - unusable_charge_uah) / 100)); /*lint !e1058*/
-		} else {
-			soc = DIV_ROUND_CLOSEST((remaining_usable_charge_uah),
-						((fcc_uah - unusable_charge_uah) * (di->soc_at_term) / 100 / 100)); /*lint !e1058*/
-		}
+		soc = DIV_ROUND_CLOSEST((remaining_usable_charge_uah),
+					((fcc_uah - unusable_charge_uah) / 100)); /*lint !e1058*/
 	}
 
 	if (soc > 100)
