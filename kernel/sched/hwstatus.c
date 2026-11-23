@@ -11,6 +11,7 @@
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
 #include <linux/seq_file.h>
+#include <linux/slab.h>
 #include <linux/kallsyms.h>
 #include <linux/utsname.h>
 #include <linux/mempolicy.h>
@@ -739,7 +740,8 @@ static ssize_t sched_hwstatus_read(struct file *file, char __user *buf,
 {
 	int i;
 	static unsigned long last_jiffies;
-	struct sched_hwstatus_rst_V3 hwstatus_rst;
+	struct sched_hwstatus_rst_V3 *hwstatus_rst;
+	ssize_t ret;
 	int version;
 	struct task_struct *taskp = NULL;
 	struct sched_statistics *ssp = NULL;
@@ -764,31 +766,39 @@ static ssize_t sched_hwstatus_read(struct file *file, char __user *buf,
 
 	last_jiffies = jiffies;
 
+	hwstatus_rst = kzalloc(sizeof(*hwstatus_rst), GFP_KERNEL);
+	if (!hwstatus_rst)
+		return -ENOMEM;
+
 	for (i = 0; i < FGTASK_MAX; i++) {
 		taskp = find_task_by_vpid(fgtasks[i]);
-		if (!taskp)
+		if (!taskp) {
+			kfree(hwstatus_rst);
 			return HW_SCHED_INVALID_TASK_STRUCT;
+		}
 
 		get_task_struct(taskp);
 		ssp = &(taskp->se.statistics);
-		rstp = &hwstatus_rst.body[i];
+		rstp = &hwstatus_rst->body[i];
 		rstp->pid = fgtasks[i];
 		rstp->tgid = fgtasks[(i >> 1) << 1];
 		record_hwstatus(&(rstp->hwstatus), ssp);
 
 		if (version > VERSION_V1) {
-			record_mem(&(hwstatus_rst.mem[i]), taskp);
-			record_caller(&(hwstatus_rst.caller),
-				&(hwstatus_rst.stack), taskp, version);
+			record_mem(&(hwstatus_rst->mem[i]), taskp);
+			record_caller(&(hwstatus_rst->caller),
+				&(hwstatus_rst->stack), taskp, version);
 		}
 
 		put_task_struct(taskp);
 	}
 
-	hwstatus_rst.head.ktime_last = ktime_last;
-	hwstatus_rst.head.ktime_now = ktime_get_ns();
+	hwstatus_rst->head.ktime_last = ktime_last;
+	hwstatus_rst->head.ktime_now = ktime_get_ns();
 
-	return simple_read_from_buffer(buf, count, ppos, &hwstatus_rst, count);
+	ret = simple_read_from_buffer(buf, count, ppos, hwstatus_rst, count);
+	kfree(hwstatus_rst);
+	return ret;
 }
 
 static ssize_t sched_hwstatus_read_for_iocollector(struct file *file,
