@@ -216,6 +216,8 @@ struct wldc_dev_info {
 	unsigned int ichg_ratio;
 };
 
+struct wireless_charge_device_ops;
+
 void wldc_set_di(struct wldc_dev_info *di);
 void wireless_sc_get_di(struct wldc_dev_info **di);
 

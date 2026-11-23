@@ -19,6 +19,7 @@
 #ifndef _WIRELESS_TRANSMITTER_H_
 #define _WIRELESS_TRANSMITTER_H_
 
+#include <huawei_platform/power/wireless_charger.h>
 #include <huawei_platform/power/wlc_qi.h>
 #include <huawei_platform/power/huawei_charger.h>
 #include <huawei_platform/power/hw_accessory.h>

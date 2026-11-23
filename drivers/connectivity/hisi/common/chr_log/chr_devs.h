@@ -48,6 +48,8 @@
 /*****************************************************************************
   3 数据类型定义
 *****************************************************************************/
+#ifndef __HISI_PLAT_BASIC_TYPES__
+#define __HISI_PLAT_BASIC_TYPES__
 typedef unsigned char               uint8;
 typedef char                        int8;
 typedef unsigned short              uint16;
@@ -56,6 +58,7 @@ typedef unsigned int                uint32;
 typedef int                         int32;
 typedef unsigned long               uint64;
 typedef long                        int64;
+#endif
 
 /*****************************************************************************
   4 枚举类型定义

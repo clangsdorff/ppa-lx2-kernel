@@ -128,7 +128,7 @@ obj-y	+= modem_symbol.o
 # overwrite obj-m
 obj-m	:= $(BALONG_MODEM_MODULE).o
 
-subdir-ccflags-y += -DCONFIG_HISI_BALONG_MODEM -Wno-unused-function -Wno-undef
+subdir-ccflags-y += -DCONFIG_HISI_BALONG_MODEM -Wno-unused-function -Wno-undef -Wno-pragma-pack
 
 # drv
 -include $(srctree)/drivers/hisi/modem/drv/Makefile

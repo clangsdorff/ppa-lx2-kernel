@@ -70,7 +70,6 @@
 
 
 
-#define BIT(nr)                         (1UL << (nr))
 #define BVAL(val, n)                    (((val) & BIT(n)) >> n)
 
 #define CS_ETM_LOCK(addr)                       \
