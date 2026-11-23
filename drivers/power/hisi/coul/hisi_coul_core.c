@@ -1340,9 +1340,10 @@ static int calculate_termination_uuc(struct smartstar_coul_device *di,
 	}
 
 #if RBATT_ADJ
-	if (di->rbatt_ratio) {
-		ratio = di->rbatt_ratio;
-		i_ma = di->last_fifo_iavg_ma;
+	if (di->rbatt_ratio || di->rbatt_ratio_avg) {
+		ratio = di->rbatt_ratio_avg ? di->rbatt_ratio_avg : di->rbatt_ratio;
+		if (di->rbatt_ratio)
+			i_ma = di->last_fifo_iavg_ma;
 		if (LOW_TEMP_OPT_OPEN == low_temp_opt_flag) {
 			if ((ratio > 0) && (ratio < 100) && (batt_temp_degc < 15))
 				ratio = ratio_min;
@@ -3886,6 +3887,28 @@ static int coul_get_battery_id_vol(void)
 	get_battery_id_voltage_real(di);
 	return di->batt_id_vol;
 }
+
+static void coul_learn_rbatt_ratio(struct smartstar_coul_device *di,
+				   int ratio, int avg_c)
+{
+	int n;
+
+	if (avg_c < RBATT_LEARN_CURR_MIN || di->charging_state == CHARGING_STATE_CHARGE_START)
+		return;
+	if (di->batt_temp < RBATT_LEARN_TEMP_MIN || di->soc_limit_flag == 2)
+		return;
+	ratio = clamp_val(ratio, RBATT_LEARN_RATIO_MIN, RBATT_LEARN_RATIO_MAX);
+	if (di->rbatt_ratio_samples < RBATT_LEARN_WEIGHT)
+		di->rbatt_ratio_samples++;
+	n = di->rbatt_ratio_samples;
+	if (n == 1)
+		di->rbatt_ratio_avg = ratio;
+	else
+		di->rbatt_ratio_avg = DIV_ROUND_CLOSEST(di->rbatt_ratio_avg * (n - 1) + ratio, n);
+	coul_core_info("rbatt ratio learn: cur=%d avg=%d n=%d i=%d\n",
+		       ratio, di->rbatt_ratio_avg, n, avg_c);
+}
+
 /*******************************************************
   Function:        calculate_delta_rc
   Description:     calculate delta cc
@@ -3958,6 +3981,7 @@ static int calculate_delta_rc(struct smartstar_coul_device *di, int soc,
 	}
 
 	di->rbatt_ratio = ratio;
+	coul_learn_rbatt_ratio(di, ratio, vc.avg_c);
 
 	delta_rbatt = rbatt_calc - rbatt_tbl;
 

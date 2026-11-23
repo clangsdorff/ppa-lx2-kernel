@@ -435,6 +435,11 @@ enum CHIP_TEMP_TYPE {
 #define SOC_JUMP_MAX 5
 #define CALI_RBATT_CC_MAX 20 //mAh
 #define CALI_RBATT_CURR_MIN 500 //mA
+#define RBATT_LEARN_CURR_MIN 150
+#define RBATT_LEARN_RATIO_MIN 80
+#define RBATT_LEARN_RATIO_MAX 400
+#define RBATT_LEARN_WEIGHT 16
+#define RBATT_LEARN_TEMP_MIN 100
 #define BATTERY_DEC_ENABLE 1
 struct coul_ocv_cali_info {
 	char cali_timestamp[TIMESTAMP_STR_SIZE];
@@ -767,6 +772,8 @@ struct smartstar_coul_device {
 	int batt_pre_delta_rc;
 	int rbatt;
 	int rbatt_ratio;
+	int rbatt_ratio_avg;
+	int rbatt_ratio_samples;
 	int r_pcb;
 	int soc_work_interval;
 	int charging_begin_soc;
