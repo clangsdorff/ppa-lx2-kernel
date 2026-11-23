@@ -4385,6 +4385,8 @@ static int calculate_state_of_charge(struct smartstar_coul_device *di)
 
 	if (di->enable_current_full)
 		current_full_adjust_limit_fcc(di);
+	if (di->batt_limit_fcc && di->batt_limit_fcc < fcc_uah)
+		fcc_uah = di->batt_limit_fcc;
 
 	/* 100 is to fit the percentage */
 	if (fcc_uah < 100)
