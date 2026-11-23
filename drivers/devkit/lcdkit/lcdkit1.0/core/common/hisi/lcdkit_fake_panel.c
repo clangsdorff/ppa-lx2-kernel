@@ -7,7 +7,6 @@
 
 static int lcdkit_fake_set_fastboot(struct platform_device* pdev)
 {
-    struct hisi_fb_data_type* hisifd = NULL;
 
     if (NULL == pdev)
     {
@@ -169,7 +168,6 @@ static int lcdkit_fake_set_backlight(struct platform_device* pdev, uint32_t bl_l
 {
     int ret = 0;
     struct hisi_fb_data_type* hisifd = NULL;
-    static char last_bl_level = 255;
     struct hisi_panel_info* pinfo = NULL;
 
     if (NULL == pdev)
@@ -264,7 +262,6 @@ static int lcdkit_fake_probe(struct platform_device* pdev)
     int ret = 0;
     struct hisi_panel_info* pinfo = NULL;
     struct device_node* np = NULL;
-    const char *lcd_bl_ic_name = NULL;
 
     if (hisi_fb_device_probe_defer(PANEL_MIPI_VIDEO, BL_SET_BY_NONE)) {
         goto err_probe_defer;
@@ -305,7 +302,6 @@ static int lcdkit_fake_probe(struct platform_device* pdev)
 
 err_device_put:
     platform_device_put(pdev);
-err_return:
     return ret;
 err_probe_defer:
     return -EPROBE_DEFER;

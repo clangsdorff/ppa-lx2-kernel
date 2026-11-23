@@ -43,7 +43,7 @@ static uint32_t huawei_project_id_len;
 uint8_t *huawei_cg_color;
 static uint32_t huawei_cg_color_len;
 uint8_t *huawei_sensor_id;
-static uint32_t huawei_sensor_id_len;
+static int touch_driver_get_projectid_color(struct himax_ts_data *ts);
 
 
 uint8_t *mutual_iir1 = NULL;
@@ -239,7 +239,6 @@ static int himax_get_glove_switch(u8 *glove_switch)
 {
 	int ret = 0;
 	u8 glove_value = 0;
-	u8 glove_enable_addr = 0;
 	uint8_t tmp_addr[4] = {0};
 	uint8_t tmp_data[4] = {0};
 
@@ -1686,12 +1685,9 @@ static int himax_parse_specific_dts(struct himax_ts_data *ts, struct himax_i2c_p
 {
 	int retval = 0;
 	int read_val = 0;
-	int coords_size = 0;
 	int length = 0;
 	int i = 0;
 
-	const char *tptesttype = NULL;
-	uint32_t coords[HX_COORDS_MAX_SIZE] = {0};
 	struct property *prop = NULL;
 	struct device_node *dt = NULL;
 	struct ts_kit_device_data *chip_data = NULL;
@@ -1823,8 +1819,6 @@ static int himax_parse_project_dts(struct himax_ts_data *ts, struct himax_i2c_pl
 	int retval = 0;
 	int read_val = 0;
 	int coords_size = 0;
-	int length = 0;
-	int i = 0;
 
 
 	const char *tptesttype = NULL;
@@ -1960,9 +1954,9 @@ static int himax_parse_dts(struct himax_ts_data *ts, struct ts_kit_device_data *
 {
 	int read_val = 0;
 	int retval = NO_ERR;
+	u32 tmp_u32 = 0;
 	int coords_size = 0;
 	uint32_t coords[HX_COORDS_MAX_SIZE] = {0};
-	const char *projectid = NULL;
 	const char *chipname = NULL;
 	struct property *prop = NULL;
 	struct device_node *device = NULL;
@@ -2009,35 +2003,40 @@ static int himax_parse_dts(struct himax_ts_data *ts, struct ts_kit_device_data *
 	}
 	TS_LOG_INFO("get chip is_ic_rawdata_proc_printf = %d\n",
 		chip_data->is_ic_rawdata_proc_printf);
-	retval = of_property_read_u32(device, "himax,power_support", &ts->power_support);
+	retval = of_property_read_u32(device, "himax,power_support", &tmp_u32);
+	ts->power_support = tmp_u32;
 	if (retval) {
 		ts->power_support= NOT_SUPPORT;
 		TS_LOG_INFO("NOT support to parse the power dts!\n");
 	}
 	TS_LOG_INFO("himax,power_support = %d\n", ts->power_support);
 
-	retval = of_property_read_u32(device, "himax,rst_support", &ts->rst_support);
+	retval = of_property_read_u32(device, "himax,rst_support", &tmp_u32);
+	ts->rst_support = tmp_u32;
 	if (retval) {
 		ts->rst_support= NOT_SUPPORT;
 		TS_LOG_INFO("NOT support to parse the rst dts!\n");
 	}
 	TS_LOG_INFO("himax,rst_support = %d\n", ts->rst_support);
 
-	retval = of_property_read_u32(device, "himax,re_send_cmd_support", &ts->re_send_cmd_support);
+	retval = of_property_read_u32(device, "himax,re_send_cmd_support", &tmp_u32);
+	ts->re_send_cmd_support = tmp_u32;
 	if (retval) {
 		ts->re_send_cmd_support = NOT_SUPPORT;
 		TS_LOG_INFO("NOT support to parse the re_send_cmd dts!\n");
 	}
 	TS_LOG_INFO("himax,re_send_cmd_support = %d\n", ts->re_send_cmd_support);
 
-	retval = of_property_read_u32(device, "himax,glove_supported", &chip_data->ts_platform_data->feature_info.glove_info.glove_supported);
+	retval = of_property_read_u32(device, "himax,glove_supported", &tmp_u32);
+	chip_data->ts_platform_data->feature_info.glove_info.glove_supported = tmp_u32;
 	if (retval) {
 		chip_data->ts_platform_data->feature_info.glove_info.glove_supported = NOT_SUPPORT;
 		TS_LOG_INFO("NOT support to parse the glove dts!\n");
 	}
 	TS_LOG_INFO("himax,glove_support = %d\n", chip_data->ts_platform_data->feature_info.glove_info.glove_supported);
 
-	retval = of_property_read_u32(device, "himax,gesture_supported", &chip_data->ts_platform_data->feature_info.wakeup_gesture_enable_info.switch_value);
+	retval = of_property_read_u32(device, "himax,gesture_supported", &tmp_u32);
+	chip_data->ts_platform_data->feature_info.wakeup_gesture_enable_info.switch_value = tmp_u32;
 	if (retval) {
 		chip_data->ts_platform_data->feature_info.wakeup_gesture_enable_info.switch_value = NOT_SUPPORT;
 		TS_LOG_INFO("NOT support to parse the gesture dts!\n");
@@ -2198,7 +2197,6 @@ static int himax_chip_detect(struct ts_kit_platform_data *platform_data)
 err_parse_project_dts_failed:
 
 err_ic_package_failed:
-err_dsm_register_failed:
 err_parse_pdata_failed:
 	kfree(pdata);
 	pdata = NULL;
@@ -2293,11 +2291,7 @@ static int himax_init_chip(void)
 	TS_LOG_INFO("%s:sucess\n", __func__);
 	return NO_ERR;
 
-#ifdef  HX_TP_SYS_DIAG
-err_create_wq_failed:
-#endif
 //#ifdef HX_RESEND_CMD
-err_resend_cmd_wq_failed:
 //#endif
 #ifdef HX_TP_SYS_DIAG
 	hx_nc_freeSelfBuffer();
@@ -2402,11 +2396,12 @@ static int himax_core_resume(void)
 {
 	struct himax_ts_data *ts;
 	int retval=0;
+	struct ts_feature_info *info = NULL;
 
 	TS_LOG_INFO("%s: enter \n", __func__);
 
 	ts = g_himax_nc_ts_data;
-	struct ts_feature_info *info = &ts->tskit_himax_data->ts_platform_data->feature_info;
+	info = &ts->tskit_himax_data->ts_platform_data->feature_info;
 
 	if(ts->firmware_updating) {
 		TS_LOG_INFO("%s: tp fw is updating, return\n", __func__);
@@ -3271,7 +3266,7 @@ bool himax_block_erase(int start_addr, int length)
 	return true;
 }
 
-static void himax_chip_erase(void)
+static void __maybe_unused himax_chip_erase(void)
 {
 	uint8_t tmp_addr[4] = {0};
 	uint8_t tmp_data[4] = {0};
@@ -3665,7 +3660,7 @@ void himax_nc_get_DSRAM_data(uint8_t *info_data)
 		if (!temp_info_data) {
 			TS_LOG_ERR("%s: Memory allocate FAIL!\n",
 				__func__);
-			return -ENOMEM;
+			return;
 		}
 	}
 	/*1. Read number of MKey R100070E8H to determin data size*/
@@ -3989,7 +3984,6 @@ static int touch_driver_rawdata_proc_printf(
 {
 	int index = 0;
 	int index1 = 0;
-	int index2 = 0;
 	int rx_num = info->hybrid_buff[DATA_0];
 	int tx_num = info->hybrid_buff[DATA_1];
 
@@ -4045,7 +4039,7 @@ static int touch_driver_rawdata_proc_printf(
 }
 
 struct ts_device_ops ts_kit_himax_nc_ops = {
-	.chip_parse_config =  himax_parse_dts,
+	.chip_parse_config =  (int (*)(struct device_node *, struct ts_kit_device_data *))himax_parse_dts,
 	.chip_detect = himax_chip_detect,
 	.chip_init =  himax_init_chip,
 	.chip_register_algo = himax_register_algo,

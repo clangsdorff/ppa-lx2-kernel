@@ -1037,7 +1037,7 @@ DECLARE_WORK(thp_after_resume_work, thp_after_resume_work_fn);
  * notify and set enough timeout make sure of TP-firmware download success.
  * This solution will cause suspend be more slowly.
  */
-static void thp_delay_before_screenoff(struct thp_core_data *cd)
+static void __maybe_unused thp_delay_before_screenoff(struct thp_core_data *cd)
 {
 	int rc;
 	u32 suspend_delay_ms;

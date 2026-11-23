@@ -565,7 +565,7 @@ static void himax_print_rawdata(int mode)
 			snprintf(buf, sizeof(buf), "%5d,",
 				tx_delta[index1]);
 			strncat((char *)info_test->tx_delta_buf, buf,
-				sizeof(buf));
+				strlen(buf));
 			if ((index1 % (x_channel)) == (x_channel - DATA_1))
 				strncat((char *)info_test->tx_delta_buf,
 					"\n", DATA_1);
@@ -574,7 +574,7 @@ static void himax_print_rawdata(int mode)
 			snprintf(buf, sizeof(buf), "%5d,",
 				rx_delta[index1]);
 			strncat((char *)info_test->rx_delta_buf,
-				buf, sizeof(buf));
+				buf, strlen(buf));
 			if ((index1 % (x_channel - DATA_1)) ==
 				(x_channel - DATA_2))
 				strncat((char *)info_test->rx_delta_buf,
@@ -1842,9 +1842,11 @@ int himax_nc_factory_start(struct himax_ts_data *ts,struct ts_rawdata_info *info
 	uint16_t self_num = 0;
 	uint16_t mutual_num = 0;
 	unsigned long timer_start=0,timer_end=0;
+	uint16_t rx = 0;
+	uint16_t tx = 0;
 	timer_start=jiffies;
-	uint16_t rx = hx_nc_getXChannel();
-	uint16_t tx = hx_nc_getYChannel();
+	rx = hx_nc_getXChannel();
+	tx = hx_nc_getYChannel();
 	//struct file *fn;
 	mutual_num	= rx * tx;
 	self_num	= rx + tx;

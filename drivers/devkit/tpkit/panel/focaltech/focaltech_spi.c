@@ -151,7 +151,7 @@ int fts_spi_write(u8 *buf, u32 len)
 {
 	int ret = 0;
 	struct spi_device *spi = g_focal_dev_data->ts_platform_data->spi;
-	static enum ssp_mode temp_com_mode_w = POLLING_MODE;
+	static enum ssp_mode temp_com_mode_w = (enum ssp_mode)POLLING_MODE;
 	struct spi_transfer xfer[] = {
 		{
 			.tx_buf = &buf[0],
@@ -190,7 +190,7 @@ int fts_spi_read(u8 *buf, u32 len)
 {
 	int ret = 0;
 	struct spi_device *spi = g_focal_dev_data->ts_platform_data->spi;
-	static enum ssp_mode temp_com_mode_r = POLLING_MODE;
+	static enum ssp_mode temp_com_mode_r = (enum ssp_mode)POLLING_MODE;
 	struct spi_transfer xfer[] = {
 		{
 			.tx_buf = &buf[0],

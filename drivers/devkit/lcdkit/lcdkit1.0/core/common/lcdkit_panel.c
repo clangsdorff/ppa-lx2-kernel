@@ -1121,8 +1121,8 @@ static ssize_t lcdkit_amoled_acl_ctrl_store(void* pdata, const char* buf)
     char *token, *cur;
     int i = 0;
 
-    cur = buf;
-    while(token = strsep(&cur, ","))
+    cur = (char *)buf;
+    while ((token = strsep(&cur, ",")))
     {
         value[i++] = simple_strtol(token, NULL, 0);
         if(i >= ACL_MAX_SIZE)
@@ -1871,7 +1871,7 @@ static ssize_t lcdkit_oem_info_show(void* pdata, char* buf)
 static ssize_t lcdkit_oem_info_store(void* pdata, const char* buf)
 {
     if (lcdkit_info.panel_infos.is_hostprocessing == 1 || (lcdkit_info.panel_infos.effect_support_mode & BITS(31))) {
-        return host_panel_oem_info_store(pdata, buf);
+        return host_panel_oem_info_store(pdata, (char *)buf);
     } else {
         LCDKIT_INFO("It is normal panel!\n");
     }
@@ -1883,14 +1883,17 @@ static ssize_t lcdkit_oem_info_store(void* pdata, const char* buf)
 #define MIPI_CLK_NORMAL "mipi_clk:normal"
 static ssize_t lcdkit_mipi_config_store(void* pdata, const char* buf)
 {
+#ifndef CONFIG_ARCH_QCOM
+    struct hisi_fb_data_type* hisifd = (struct hisi_fb_data_type*) pdata;
+    struct hisi_panel_info *pinfo = NULL;
+#endif
     if (NULL == pdata || NULL == buf)
     {
         LCDKIT_ERR("%s: NULL Pointer!\n",__func__);
         return -EINVAL;
     }
 #ifndef CONFIG_ARCH_QCOM
-    struct hisi_fb_data_type* hisifd = (struct hisi_fb_data_type*) pdata;
-    struct hisi_panel_info *pinfo = &(hisifd->panel_info);
+    pinfo = &(hisifd->panel_info);
 
     if (!strncmp(buf, MIPI_CLK_HIGH, sizeof(MIPI_CLK_HIGH)))
     {

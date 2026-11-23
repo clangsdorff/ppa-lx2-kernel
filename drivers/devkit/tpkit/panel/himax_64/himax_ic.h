@@ -658,7 +658,6 @@ enum himax_event_id {
 	HIMAX_EV_LIFTOFF,
 };
 
-static int touch_driver_get_projectid_color(struct himax_ts_data *ts);
 void himax_nc_sense_on(uint8_t FlashMode);
 void touch_driver_83102_sense_on(uint8_t flashmode);
 #if defined(CONFIG_TOUCHSCREEN_HIMAX_DEBUG)

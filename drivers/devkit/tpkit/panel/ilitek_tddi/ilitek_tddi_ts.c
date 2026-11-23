@@ -388,7 +388,6 @@ static int ilitek_tddi_get_brightness_info(void)
 }
 static int ilitek_tddi_input_config(struct input_dev *input_dev)
 {
-	u16 x_min = 0, x_max = 0, y_min = 0, y_max = 0, finger_nums = 0;
 
 	ilits->input = input_dev;
 
@@ -795,7 +794,7 @@ out:
 static int ilitek_get_roi_switch(u8 *roi_switch)
 {
 	if (!roi_switch)
-		return NULL;
+		return -EINVAL;
 
 	*roi_switch = ili_ic_get_roi_staus();
 
@@ -868,7 +867,7 @@ static unsigned char *chip_roi_rawdata(void)
 	struct ts_roi_info *roi_info = NULL;
 
 	roi_info = ilitek_get_roi_info(ilits->ts_dev_data);
-	if (!ilits->ts_dev_data->ts_platform_data->feature_info.roi_info.roi_supported || !ilits->roi_data || !(roi_info->roi_switch)) {
+	if (!ilits->ts_dev_data->ts_platform_data->feature_info.roi_info.roi_supported || !(roi_info->roi_switch)) {
 		TS_LOG_ERR("%s : Not supported roi mode or rawadta is null.\n", __func__);
 		return NULL;
 	}
@@ -929,7 +928,7 @@ static int ilitek_tddi_esdcheck_func(void)
 }
 
 #if defined(HUAWEI_CHARGER_FB)
-static int ilitek_charger_switch(struct ts_charger_info *info)
+static int __maybe_unused ilitek_charger_switch(struct ts_charger_info *info)
 {
 	return 0;
 }

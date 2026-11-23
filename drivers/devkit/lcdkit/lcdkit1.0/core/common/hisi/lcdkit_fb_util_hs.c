@@ -10,7 +10,7 @@
 ssize_t get_lcdkit_support(void)
 {
     struct device_node* lcdkit_np = NULL;
-    char* support_type = NULL;
+    const char* support_type = NULL;
     ssize_t ret = 0;
 
     lcdkit_np = of_find_compatible_node(NULL, NULL, DTS_COMP_LCDKIT_PANEL_TYPE);
@@ -389,7 +389,7 @@ err_out:
     return ret;
 }
 
-ssize_t lcd_ic_color_enhancement_mode_show(struct device* dev, struct lcdkit_panel_data* lcdkit_info, const char* buf)
+ssize_t lcd_ic_color_enhancement_mode_show(struct device* dev, struct lcdkit_panel_data* lcdkit_info, char* buf)
 {
     ssize_t ret = 0;
     struct hisi_fb_data_type* hisifd = NULL;
@@ -710,7 +710,6 @@ ssize_t lcd_voltage_mode_enable_store(struct device* dev, struct lcdkit_panel_da
         hisifb_deactivate_vsync(hisifd);
     }
 
-err_out:
     up(&hisifd->blank_sem);
     return ret;
 }
@@ -902,7 +901,6 @@ ssize_t lcd_support_mode_show(struct device* dev, struct lcdkit_panel_data* lcdk
 {
     ssize_t ret = 0;
     struct hisi_fb_data_type* hisifd = NULL;
-    char lcd_bist_check_result[BIS_CHECK_COUNT] = {0};
 
     if (NULL == dev)
     {
@@ -1217,7 +1215,6 @@ ssize_t lcd_support_checkmode_show(struct device* dev, struct lcdkit_panel_data*
 {
     ssize_t ret = 0;
     struct hisi_fb_data_type* hisifd = NULL;
-    char lcd_bist_check_result[BIS_CHECK_COUNT] = {0};
 
     if (NULL == dev)
     {
@@ -3426,7 +3423,6 @@ ssize_t lcd_dynamic_porch_store(struct device* dev,
     pinfo->ldi.v_pulse_width = v_pulse_width;
     pinfo->pxl_clk_rate = pixel_clk * 1000000UL;
 
-out:
     hisifb_deactivate_vsync(hisifd);
 
     up(&hisifd->blank_sem);
@@ -4133,6 +4129,7 @@ ssize_t lcd_panel_sncode_show(struct device *dev, char *buf)
 ssize_t lcd_mipi_config_store(struct device* dev, struct lcdkit_panel_data* lcdkit_info, const char* buf)
 {
 	ssize_t ret = -EINVAL;
+	struct hisi_fb_data_type* hisifd = NULL;
 
 	if (NULL == dev || NULL == lcdkit_info || NULL == buf)
 	{
@@ -4140,7 +4137,7 @@ ssize_t lcd_mipi_config_store(struct device* dev, struct lcdkit_panel_data* lcdk
 		return ret;
 	}
 
-	struct hisi_fb_data_type* hisifd = get_fb_data(dev);
+	hisifd = get_fb_data(dev);
 	if (NULL == hisifd) {
 		LCDKIT_ERR("hisifd is NULL Pointer!\n");
 		return ret;

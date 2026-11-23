@@ -207,7 +207,7 @@ int lcdkit_parse_dcs_cmds(struct device_node *np, const char *cmd_key,
         pcmds->cmds[i].wait     = dchdr->wait;
         pcmds->cmds[i].waittype = dchdr->waittype;
         pcmds->cmds[i].dlen     = dchdr->dlen;
-        pcmds->cmds[i].payload  = bp;
+        pcmds->cmds[i].payload  = (char *)bp;
 
         for (j = 0; j < dchdr->dlen; j++, bp++){
             *(pcmds->cmds[i].payload+j)  = (char)(*bp);

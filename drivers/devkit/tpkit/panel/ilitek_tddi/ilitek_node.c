@@ -261,7 +261,7 @@ out:
 	return ret;
 }
 
-static int debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_count)
+static int __maybe_unused debug_mode_get_data(struct file_buffer *file, u8 type, u32 frame_count)
 {
 	int ret;
 	u8 cmd[2] = { 0 }, row, col;

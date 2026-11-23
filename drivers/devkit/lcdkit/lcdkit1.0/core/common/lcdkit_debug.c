@@ -1134,11 +1134,11 @@ static int lcdkit_is_mipi_input_legal(int op_type,int ic_reg,
 
 void lcdkit_dump_reg_buf(const u32* buf, int cnt)
 {
+    int i = 0;
     if (NULL == buf){
         LCDKIT_ERR("input illegal.\n");
         return;
     }
-    int i = 0;
     for (i = 0; i < cnt; i++) {
         switch (i % INT_COUNT) {
         case 0:
@@ -1343,7 +1343,7 @@ int lcdkit_mipi_prcess_ic_reg(int op_type,int reg, int cmd_type,
     lcd_lreg_cmd.wait = LCDKIT_READ_REG_WAIT_RESPONSE_TIME;
     lcd_lreg_cmd.waittype = LCDKIT_WAIT_TYPE_US;
     lcd_lreg_cmd.dlen = sizeof(reg);
-    lcd_lreg_cmd.payload = &reg;
+    lcd_lreg_cmd.payload = (char *)&reg;
 
    switch(op_type)
    {

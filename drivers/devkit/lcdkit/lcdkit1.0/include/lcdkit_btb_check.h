@@ -7,9 +7,8 @@
 #define CHECKED_ERROR	(-1)
 #define MAX_REPPORT_TIMES	(5)
 #define BUF_LENGTH	(50)
-#define GPIO_LCD_BTB_NAME           "gpio_lcdkit_btb"
 
-static struct lcdkit_btb_info {
+struct lcdkit_btb_info {
 	unsigned char btb_support;	/*0:not support btb check  1:support btb check*/
 	unsigned int btb_con_addr;
 	unsigned int gpio_lcdkit_btb;

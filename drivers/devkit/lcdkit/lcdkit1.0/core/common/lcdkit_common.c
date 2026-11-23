@@ -132,12 +132,12 @@ void lcdkit_mipi_check(void* pdata)
     int len = REG_READ_COUNT;
     static int MIPI_CHECK_ERROR[MAX_REG_READ_COUNT][RECORD_ITEM_NUM]={{0}};    /*[i][0]-check times  [i][1]-check error times  [i][2]-mipi error times*/
     char* expect_ptr = lcdkit_info.panel_infos.mipi_check_value.buf;
+    char* panel_name = NULL;
 #if defined (CONFIG_HUAWEI_DSM)
     struct timeval tv;
     int diskeeptime = 0;
     memset(&tv, 0, sizeof(struct timeval));
 #endif
-    char* panel_name = NULL;
 
     if (NULL == pdata || NULL == expect_ptr){
         LCDKIT_ERR("mipi check happened parameter error\n");

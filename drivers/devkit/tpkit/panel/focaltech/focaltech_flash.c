@@ -1241,7 +1241,7 @@ static int focal_firmware_update_spi(
 	int retry_time = 0;
 
 	if(focal_pdata->use_dma_download_firmware) {
-		g_focal_dev_data->ts_platform_data->spidev0_chip_info.com_mode = DMA_MODE;
+		g_focal_dev_data->ts_platform_data->spidev0_chip_info.com_mode = (enum ssp_mode)DMA_MODE;
 	}
 	for (retry_time = 0; retry_time < 3; retry_time++) {
 		TS_LOG_INFO("%s:write pram, retry=%d\n",
@@ -1294,7 +1294,7 @@ static int focal_firmware_update_spi(
 		return ret;
 	}
 	if(focal_pdata->use_dma_download_firmware) {
-		g_focal_dev_data->ts_platform_data->spidev0_chip_info.com_mode = POLLING_MODE;
+		g_focal_dev_data->ts_platform_data->spidev0_chip_info.com_mode = (enum ssp_mode)POLLING_MODE;
 	}
 	focal_pdata->fw_is_running = true;
 	return 0;

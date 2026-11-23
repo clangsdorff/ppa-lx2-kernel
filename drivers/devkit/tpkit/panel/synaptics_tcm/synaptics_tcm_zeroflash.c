@@ -878,7 +878,7 @@ int zeroflash_download(char *file_name,struct syna_tcm_hcd *tcm_hcd)
 	char retry = 5;
 
 	if(tcm_hcd->use_dma_download_firmware) {
-		g_ts_kit_platform_data.spidev0_chip_info.com_mode = DMA_MODE;
+		g_ts_kit_platform_data.spidev0_chip_info.com_mode = (enum ssp_mode)DMA_MODE;
 		tcm_hcd->spi_comnunicate_frequency = tcm_hcd->downmload_firmware_frequency;
 	}
 
@@ -913,7 +913,7 @@ int zeroflash_download(char *file_name,struct syna_tcm_hcd *tcm_hcd)
 exit:
 	if(tcm_hcd->use_dma_download_firmware) {
 		tcm_hcd->spi_comnunicate_frequency = SPI_DEFLAUT_SPEED;
-		g_ts_kit_platform_data.spidev0_chip_info.com_mode = POLLING_MODE;
+		g_ts_kit_platform_data.spidev0_chip_info.com_mode = (enum ssp_mode)POLLING_MODE;
 	}
 	return retval;
 }

@@ -25,13 +25,13 @@ static void get_lcd_ldo_info_for_rt(void)
 	g_lcd_ldo_info.lcd_ldo_num = of_property_count_elems_of_size(of_node, "lcd_ldo_channel", sizeof(u32));
 	if(g_lcd_ldo_info.lcd_ldo_num > 0)
 	{
-		ret = of_property_read_u32_array(of_node, "lcd_ldo_channel",&g_lcd_ldo_info.lcd_ldo_channel,g_lcd_ldo_info.lcd_ldo_num);
+		ret = of_property_read_u32_array(of_node, "lcd_ldo_channel",(u32 *)g_lcd_ldo_info.lcd_ldo_channel,g_lcd_ldo_info.lcd_ldo_num);
 		if (ret < 0)
 		{
 			LCDKIT_ERR("Getting lcd_ldo_channel from platform dts is failed!\n");
 		}
 
-		ret = of_property_read_u32_array(of_node, "lcd_ldo_threshold",&g_lcd_ldo_info.lcd_ldo_threshold,g_lcd_ldo_info.lcd_ldo_num);
+		ret = of_property_read_u32_array(of_node, "lcd_ldo_threshold",(u32 *)g_lcd_ldo_info.lcd_ldo_threshold,g_lcd_ldo_info.lcd_ldo_num);
 		if (ret < 0)
 		{
 			LCDKIT_ERR("Getting lcd_ldo_threshold from platform dts is failed!\n");

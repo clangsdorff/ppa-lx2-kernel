@@ -581,7 +581,6 @@ void lcdkit_parse_backlight_fault_check_param(struct device_node *pnp)
 {
 	char tmp_buf[128] = {0};
 	u32 tmp_32 = 0;
-	int ret = 0;
 
 	if(NULL == pnp)
 	{
@@ -621,7 +620,6 @@ void lcdkit_parse_backlight_ic_config(struct device_node *np)
 {
     char tmp_buf[128] = {0};
     int ret = 0;
-    u32 tmp_32 = 0;
     u32 *buf = NULL;
     int i = 0;
     int j = 0;

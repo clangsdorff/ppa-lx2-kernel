@@ -55,7 +55,6 @@ int self_test_nc_flag = 0;
 #ifdef HX_TP_SYS_DEBUG
 	uint8_t cmd_set[4] = {0};
 	uint8_t mutual_set_flag = 0;
-	static int handshaking_result = 0;
 	static bool fw_update_complete = false;
 	static unsigned char debug_level_cmd = 0;
 	static unsigned char upgrade_fw[FW_SIZE_64k] = {0};
@@ -1005,7 +1004,7 @@ static void himax_ts_flash_print_func(void)
 static void himax_ts_flash_func(void)
 {
 	uint8_t local_flash_command = 0;
-	mm_segment_t old_fs;
+	mm_segment_t __maybe_unused old_fs;
 
 	himax_nc_int_enable(g_himax_nc_ts_data->tskit_himax_data->ts_platform_data->irq_id,0);
 	setFlashDumpGoing(true);

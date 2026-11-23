@@ -2566,7 +2566,7 @@ out:
 	return err;
 }
 static int __init early_parse_himax_panel_name_cmdline(
-	const char *p)
+	char *p)
 {
 	if (p)
 	{

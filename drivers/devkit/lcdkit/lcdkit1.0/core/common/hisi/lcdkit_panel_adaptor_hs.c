@@ -605,7 +605,7 @@ void lcdkit_mipi_dsi_max_return_packet_size(void* pdata, struct lcdkit_dsi_cmd_d
     set_reg(mipi_dsi0_base + MIPIDSI_GEN_HDR_OFFSET, hdr, 24, 0);
 }
 
-int lcdkit_mipi_dsi_read_compare(struct mipi_dsi_read_compare_data* data,
+int lcdkit_mipi_dsi_read_compare(struct lcdkit_dsi_read_compare_data* data,
                                  void* pdata)
 {
     uint32_t* read_value = NULL;
@@ -613,10 +613,9 @@ int lcdkit_mipi_dsi_read_compare(struct mipi_dsi_read_compare_data* data,
     uint32_t* read_mask = NULL;
     char** reg_name = NULL;
     int log_on = 0;
-    struct lcdkit_dsi_cmd_desc* cmds = NULL;
+    struct lcdkit_dsi_panel_cmds* cmds = NULL;
     int cnt = 0;
     int cnt_not_match = 0;
-    int ret = 0;
     int i;
 
     BUG_ON(data == NULL);
@@ -637,7 +636,7 @@ int lcdkit_mipi_dsi_read_compare(struct mipi_dsi_read_compare_data* data,
         if (log_on)
         {
             LCDKIT_INFO("Read reg %s: 0x%x, value = 0x%x\n",
-                        reg_name[i], cmds[i].payload[0], read_value[i]);
+                        reg_name[i], cmds->cmds[i].payload[0], read_value[i]);
         }
 
         if (expected_value[i] != (read_value[i] & read_mask[i]))
@@ -727,13 +726,16 @@ void lcdkit_updt_porch(struct platform_device* pdev, int scence)
 void lcdkit_lp2hs_mipi_test(void* pdata)
 {
     u32 lp2hs_mipi_check_read_value[1] = {0};
+    u32 lp2hs_mipi_check_expected_value = lcdkit_info.panel_infos.lp2hs_mipi_check_expected_value;
+    u32 lp2hs_mipi_check_read_mask = lcdkit_info.panel_infos.lp2hs_mipi_check_read_mask;
+    char* lp2hs_mipi_check_reg_name[] = {"power mode"};
 
     struct lcdkit_dsi_read_compare_data g_lp2hs_mipi_check_data =
     {
         .read_value = lp2hs_mipi_check_read_value,
-        .expected_value = lcdkit_info.panel_infos.lp2hs_mipi_check_expected_value,
-        .read_mask = lcdkit_info.panel_infos.lp2hs_mipi_check_read_mask,
-        .reg_name = "power mode",
+        .expected_value = &lp2hs_mipi_check_expected_value,
+        .read_mask = &lp2hs_mipi_check_read_mask,
+        .reg_name = lp2hs_mipi_check_reg_name,
         .log_on = 1,
         .cmds = &lcdkit_info.panel_infos.lp2hs_mipi_check_read_cmds,
         .cnt = lcdkit_info.panel_infos.lp2hs_mipi_check_read_cmds.cmd_cnt,
@@ -2103,13 +2105,6 @@ static void hostprocessing_read_ddic_2d_barcode_hx83112(struct hisi_fb_data_type
 	char otp_poweron2[] = {0xbb, 0x23};
 	char otp_poweroff[] = {0xbb, 0x20};
 
-	if(NULL == hisifd || NULL == out){
-		LCDKIT_ERR("NULL pointer! \n");
-		return;
-	}
-	mipi_dsi0_base = hisifd->mipi_dsi0_base;
-
-	LCDKIT_INFO(" read hx83112 2d barcode enter.\n");
 	struct dsi_cmd_desc otp_poweron1_cmds[] =
 	{
 		{DTYPE_DCS_LWRITE, 0, 0, WAIT_TYPE_US, sizeof(otp_poweron_offset1), otp_poweron_offset1},
@@ -2138,6 +2133,13 @@ static void hostprocessing_read_ddic_2d_barcode_hx83112(struct hisi_fb_data_type
 	{
 		{DTYPE_GEN_READ, 0, 100, WAIT_TYPE_US, sizeof(project_id_reg), project_id_reg},
 	};
+	if(NULL == hisifd || NULL == out){
+		LCDKIT_ERR("NULL pointer! \n");
+		return;
+	}
+	mipi_dsi0_base = hisifd->mipi_dsi0_base;
+
+	LCDKIT_INFO(" read hx83112 2d barcode enter.\n");
 
 	if (lcdkit_check_mipi_fifo_empty(hisifd->mipi_dsi0_base))
 	{
@@ -2334,11 +2336,6 @@ static void hostprocessing_read_wc(uint32_t *read_data, struct hisi_fb_data_type
 	int read_ret = 0;
 	int i = 0;
 
-	if ((NULL == hisifd) || (NULL == read_data)) {
-		LCDKIT_ERR("NULL pointer\n");
-		return;
-	}
-
 	static char color_white_a1[] = {0xa1};
 	struct dsi_cmd_desc color_white_reg[] = {
 		{DTYPE_GEN_READ1, 0, 10, WAIT_TYPE_US,
@@ -2346,6 +2343,11 @@ static void hostprocessing_read_wc(uint32_t *read_data, struct hisi_fb_data_type
 	};
 
 	char __iomem *mipi_dsi0_base = NULL;
+	if ((NULL == hisifd) || (NULL == read_data)) {
+		LCDKIT_ERR("NULL pointer\n");
+		return;
+	}
+
 
 	mipi_dsi0_base = hisifd->mipi_dsi0_base;
 	LCDKIT_PANEL_CMD_REQUEST();
@@ -2456,13 +2458,6 @@ static void hostprocessing_read_brightness_colorpoint_hx83112(struct hisi_fb_dat
 	char otp_poweron2[] = {0xbb, 0x23};
 	char otp_poweroff[] = {0xbb, 0x20};
 
-	if(NULL == hisifd || NULL == out){
-		LCDKIT_ERR("NULL pointer! \n");
-		return;
-	}
-	mipi_dsi0_base = hisifd->mipi_dsi0_base;
-
-	LCDKIT_INFO(" read hx83112 read_colorpoint_of_white enter.\n");
 	struct dsi_cmd_desc otp_poweron1_cmds[] =
 	{
 		{DTYPE_DCS_LWRITE, 0, 0, WAIT_TYPE_US, sizeof(otp_poweron_offset1), otp_poweron_offset1},
@@ -2491,6 +2486,13 @@ static void hostprocessing_read_brightness_colorpoint_hx83112(struct hisi_fb_dat
 	{
 		{DTYPE_GEN_READ, 0, 100, WAIT_TYPE_US, sizeof(project_id_reg), project_id_reg},
 	};
+	if(NULL == hisifd || NULL == out){
+		LCDKIT_ERR("NULL pointer! \n");
+		return;
+	}
+	mipi_dsi0_base = hisifd->mipi_dsi0_base;
+
+	LCDKIT_INFO(" read hx83112 read_colorpoint_of_white enter.\n");
 
 	if (lcdkit_check_mipi_fifo_empty(hisifd->mipi_dsi0_base))
 	{
@@ -2629,20 +2631,11 @@ static void hostprocessing_set_bright_colorpoint_of_white(char *oem_data, struct
 	char __iomem *mipi_dsi0_base = NULL;
 	struct hisi_panel_info *pinfo = NULL;
 
-	if ((NULL == hisifd) || (NULL == oem_data)) {
-		LCDKIT_ERR("NULL pointer\n");
-		return;
-	}
-
-	pinfo = &(hisifd->panel_info);
-	mipi_dsi0_base = hisifd->mipi_dsi0_base;
 	uint32_t read_value[1] = {0};
 	int error = 0;
 	int i = 0;
 
-	for (i = 0; i < LCD_OEM_BLOCK_LEN; i ++) {
-		LCDKIT_INFO("the %d write data is %x\n", i, oem_data[i]);
-	}
+
 
 	char lcd_manu_protect_off[] = {0xff,0x20};//manufacture command access
 	char lcd_nvm_load_setting[] = {0xfb,0x01};
@@ -2699,19 +2692,13 @@ static void hostprocessing_set_bright_colorpoint_of_white(char *oem_data, struct
 
 	//brightness
 	char lcd_brightness_l[2] = {0x23,0x00};//brightness
-	lcd_brightness_l[1] = oem_data[2];
 	char lcd_brightness_h[2] = {0x24,0x00};//brightness
-	lcd_brightness_h[1] = oem_data[3];
 
 	//color point of white
 	char lcd_color_of_white_xl[2] = {0x25,0x00};
-	lcd_color_of_white_xl[1] = oem_data[4];//color point of white x low byte
 	char lcd_color_of_white_xh[2] = {0x26,0x00};
-	lcd_color_of_white_xh[1] = oem_data[5];//color point of white x high byte
 	char lcd_color_of_white_y_l[2] = {0x27,0x00};//brightness
-	lcd_color_of_white_y_l[1] = oem_data[6]; //color point for white y low byte
 	char lcd_color_of_white_y_h[2] = {0x28,0x00};//brightness
-	lcd_color_of_white_y_h[1] = oem_data[7]; //color point for white y high byte
 
 	struct dsi_cmd_desc lcd_write_bright_cmd1[] = {
 		{DTYPE_GEN_LWRITE, 0, 10, WAIT_TYPE_US,
@@ -2730,6 +2717,21 @@ static void hostprocessing_set_bright_colorpoint_of_white(char *oem_data, struct
 			sizeof(lcd_color_of_white_y_h), lcd_color_of_white_y_h},
 	};
 
+	if ((NULL == hisifd) || (NULL == oem_data)) {
+		LCDKIT_ERR("NULL pointer\n");
+		return;
+	}
+	pinfo = &(hisifd->panel_info);
+	mipi_dsi0_base = hisifd->mipi_dsi0_base;
+	for (i = 0; i < LCD_OEM_BLOCK_LEN; i ++) {
+		LCDKIT_INFO("the %d write data is %x\n", i, oem_data[i]);
+	}
+	lcd_brightness_l[1] = oem_data[2];
+	lcd_brightness_h[1] = oem_data[3];
+	lcd_color_of_white_xl[1] = oem_data[4];//color point of white x low byte
+	lcd_color_of_white_xh[1] = oem_data[5];//color point of white x high byte
+	lcd_color_of_white_y_l[1] = oem_data[6]; //color point for white y low byte
+	lcd_color_of_white_y_h[1] = oem_data[7]; //color point for white y high byte
 	//write brightness data
 	LCDKIT_PANEL_CMD_REQUEST();
 	mipi_dsi_cmds_tx(lcd_write_bright_cmd1, \

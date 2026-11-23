@@ -616,12 +616,11 @@ static int jdi_panel_write(struct hisi_fb_data_type* hisifd)
     char reg_33[2] = {0x33, 0x00};
     char reg_34[2] = {0x34, 0x00};
     char page2a[2] = {0xff, 0x2a};
-    char page10[2] = {0xff, 0x10};
+    char cmd1[2] = {0xff, 0x10};
     char reg_fb[2] = {0xfb, 0x01};
     reg_32[1] = read_temp[0];
     reg_33[1] = read_temp[1];
     reg_34[1] = read_temp[2];
-    char cmd1[2] = {0xff, 0x10};
 
     struct dsi_cmd_desc lcd_reg_32_cmds[] = {
         {DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
@@ -636,10 +635,6 @@ static int jdi_panel_write(struct hisi_fb_data_type* hisifd)
             sizeof(reg_34), reg_34},
     };
     struct dsi_cmd_desc lcd_page2a_cmds[] = {
-        {DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
-            sizeof(page2a), page2a},
-    };
-    struct dsi_cmd_desc lcd_page10_cmds[] = {
         {DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
             sizeof(page2a), page2a},
     };
@@ -673,7 +668,6 @@ static int jdi_panel_write(struct hisi_fb_data_type* hisifd)
 static int jdi_panel_read(void)
 {
     int ret = 0;
-    int i = 0;
     uint32_t read_back[2] = {0};
     uint8_t jdi_otp_id0 = 0x00;
     char lcd_reg[] = {0xa1};
@@ -682,9 +676,7 @@ static int jdi_panel_read(void)
     char reg_91[] = {0x91};
     char page20[2] = {0xff, 0x20};
     char page2a[2] = {0xff, 0x2a};
-    char page10[2] = {0xff, 0x10};
     char reg_fb[2] = {0xfb, 0x01};
-    static int read_flag = 0;
     struct hisi_fb_data_type *hisifd = NULL;
     char cmd1[2] = {0xff, 0x10};
 
@@ -707,10 +699,6 @@ static int jdi_panel_read(void)
     struct dsi_cmd_desc lcd_page20_cmds[] = {
         {DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
             sizeof(page20), page20},
-    };
-    struct dsi_cmd_desc lcd_page10_cmds[] = {
-        {DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
-            sizeof(page2a), page2a},
     };
     struct dsi_cmd_desc lcd_reg_fb_cmds[] = {
         {DTYPE_DCS_WRITE1, 0, 10, WAIT_TYPE_US,
@@ -818,7 +806,6 @@ static int lcdkit_panel_is_power_on(struct hisi_fb_data_type* hisifd)
 static void lcdkit_clear_sctrl_reg(struct hisi_fb_data_type* hisifd)
 {
     uint32_t temp = 0;
-    int ret       = 0;
     char __iomem* sctrl_base = NULL;
     /*bit[8] = 1 : lcd power on
      *bit[8] = 0 : lcd power off*/
@@ -2664,8 +2651,6 @@ static int find_cmd_by_mipi_clk(struct hisi_fb_data_type *hisifd, uint32_t clk_v
 	return ret;
 }
 
-static int snd_mipi_clk_disable_esd = 0;
-
 static ssize_t lcdkit_snd_mipi_clk_cmd_store(struct platform_device *pdev, uint32_t clk_val)
 {
 	ssize_t ret = 0;
@@ -2807,7 +2792,6 @@ static int lcdkit_esd_check(struct platform_device* pdev)
 static void lcdkit_snd_cmd_before_frame(struct platform_device* pdev)
 {
     struct hisi_fb_data_type* hisifd = NULL;
-    int ret = 0;
 
     LCDKIT_DEBUG("+\n");
     if (NULL == pdev)
@@ -2931,7 +2915,7 @@ static int lcdkit_set_fastboot(struct platform_device* pdev)
     // get blmaxnit
     if(lcdkit_info.panel_infos.get_blmaxnit_type == GET_BLMAXNIT_FROM_DDIC){
         lcdkit_dsi_tx(hisifd, &lcdkit_info.panel_infos.bl_befreadconfig_cmds);
-        lcdkit_dsi_rx(hisifd, &lcdkit_brightness_ddic_info, 1, &lcdkit_info.panel_infos.bl_maxnit_cmds);
+        lcdkit_dsi_rx(hisifd, (uint32_t *)&lcdkit_brightness_ddic_info, 1, &lcdkit_info.panel_infos.bl_maxnit_cmds);
         lcdkit_dsi_tx(hisifd, &lcdkit_info.panel_infos.bl_aftreadconfig_cmds);
     }
 
@@ -3066,9 +3050,9 @@ static ssize_t lcdkit_ce_mode_store(struct platform_device* pdata, const char* b
 
 static ssize_t lcdkit_rgbw_set_func(struct hisi_fb_data_type* hisifd)
 {
-    BUG_ON(hisifd == NULL);
 	ssize_t ret = 0;
 	struct hisi_panel_info* pinfo = NULL;
+    BUG_ON(hisifd == NULL);
 
 	pinfo = &(hisifd->panel_info);
 
@@ -3184,9 +3168,19 @@ static ssize_t lcdkit_aod_alpm_setting_store(struct platform_device *pdev, const
     struct hisi_fb_data_type *hisifd = NULL;
     int ret = 0;
     unsigned int cmd = 0;
-    static uint32_t reg_value_61h;
     int data_for_ts_resume = LCDKIT_SHORT_SYNC_TIMEOUT;
     int data_for_ts_after_resume = LCDKIT_NO_SYNC_TIMEOUT;
+    char playload[3] = {0x51, 0x00, 0x00};
+    struct lcdkit_dsi_cmd_desc cmds = {DTYPE_GEN_LWRITE, 0, 0, 0, 10, 0, 3, playload};
+    struct lcdkit_dsi_panel_cmds backlight_cmds = {NULL, 0, &cmds, 1, 0, 0};
+
+    char playload1[1] = {0x28};
+    struct lcdkit_dsi_cmd_desc cmds1 = {DTYPE_DCS_WRITE, 0, 0, 0, 100, 0, 1, playload1};
+    struct lcdkit_dsi_panel_cmds display_off_cmd = {NULL, 0, &cmds1, 1, 0, 0};
+
+    char playload2[1] = {0x29};
+    struct lcdkit_dsi_cmd_desc cmds2 = {DTYPE_DCS_WRITE, 0, 0, 0, 100, 0, 1, playload2};
+    struct lcdkit_dsi_panel_cmds display_on_cmd = {NULL, 0, &cmds2, 1, 0, 0};
 
     if(pdev == NULL)
     {
@@ -3208,17 +3202,6 @@ static ssize_t lcdkit_aod_alpm_setting_store(struct platform_device *pdev, const
         return -1;
     }
 
-    char playload[3] = {0x51, 0x00, 0x00};
-    struct lcdkit_dsi_cmd_desc cmds = {DTYPE_GEN_LWRITE, 0, 0, 0, 10, 0, 3, playload};
-    struct lcdkit_dsi_panel_cmds backlight_cmds = {NULL, 0, &cmds, 1, 0, 0};
-
-    char playload1[1] = {0x28};
-    struct lcdkit_dsi_cmd_desc cmds1 = {DTYPE_DCS_WRITE, 0, 0, 0, 100, 0, 1, playload1};
-    struct lcdkit_dsi_panel_cmds display_off_cmd = {NULL, 0, &cmds1, 1, 0, 0};
-
-    char playload2[1] = {0x29};
-    struct lcdkit_dsi_cmd_desc cmds2 = {DTYPE_DCS_WRITE, 0, 0, 0, 100, 0, 1, playload2};
-    struct lcdkit_dsi_panel_cmds display_on_cmd = {NULL, 0, &cmds2, 1, 0, 0};
 
     LCDKIT_INFO("[AOD] AOD cmd is %d \n", cmd);
     switch(cmd)
@@ -3352,6 +3335,10 @@ void read_td4336_project_id(struct hisi_fb_data_type* hisifd, uint8_t g_project_
     char project_id_reg[] = {0xbf};
     int ret = 0;
 
+    struct dsi_cmd_desc project_id_cmd[] =
+	{
+        {DTYPE_GEN_READ1, 0, 100, WAIT_TYPE_US, sizeof(project_id_reg), project_id_reg},
+	};
 	if (NULL == hisifd || NULL == g_project_id)
 	{
 		LCDKIT_ERR("NULL Pointer!\n");
@@ -3360,10 +3347,6 @@ void read_td4336_project_id(struct hisi_fb_data_type* hisifd, uint8_t g_project_
 
     mipi_dsi0_base = hisifd->mipi_dsi0_base;
 
-    struct dsi_cmd_desc project_id_cmd[] =
-	{
-        {DTYPE_GEN_READ1, 0, 100, WAIT_TYPE_US, sizeof(project_id_reg), project_id_reg},
-	};
 
     if (lcdkit_check_mipi_fifo_empty(hisifd->mipi_dsi0_base))
 	{
@@ -3402,27 +3385,6 @@ void read_himax83112_project_id(struct hisi_fb_data_type* hisifd, uint8_t g_proj
 	char otp_poweron2[] = {0xbb, 0x23};
 	char otp_poweroff[] = {0xbb, 0x20};
 
-	if (NULL == hisifd || NULL == g_project_id)
-	{
-		LCDKIT_ERR("NULL Pointer!\n");
-        g_record_project_id_err |= BIT(1);
-		return ;
-	}
-
-	mipi_dsi0_base = hisifd->mipi_dsi0_base;
-	/* "Emily_read_reg_flag = 1" means Hx83112A, "Emily_read_reg_flag = 2" means Hx83112C. */
-	if(lcdkit_info.panel_infos.eml_read_reg_flag == Hx83112A)
-	{
-		for(i = 0; i< PROJECT_ID_LENGTH; i++)
-		{
-			project_addr[i] = project_addr_112A[i];
-		}
-		playload1_enter1[1] = playload1_enter1_112A[1];
-		playload1_enter1[2] = playload1_enter1_112A[2];
-		playload1_enter2[1] = playload1_enter2_112A[1];
-		playload1_enter2[2] = playload1_enter2_112A[2];
-	}
-
 	struct dsi_cmd_desc otp_poweron1_cmds[] =
 	{
 		{DTYPE_DCS_LWRITE, 0, 0, WAIT_TYPE_US, sizeof(otp_poweron_offset1), otp_poweron_offset1},
@@ -3451,6 +3413,27 @@ void read_himax83112_project_id(struct hisi_fb_data_type* hisifd, uint8_t g_proj
 	{
 		{DTYPE_GEN_READ, 0, 100, WAIT_TYPE_US, sizeof(project_id_reg), project_id_reg},
 	};
+	if (NULL == hisifd || NULL == g_project_id)
+	{
+		LCDKIT_ERR("NULL Pointer!\n");
+        g_record_project_id_err |= BIT(1);
+		return ;
+	}
+
+	mipi_dsi0_base = hisifd->mipi_dsi0_base;
+	/* "Emily_read_reg_flag = 1" means Hx83112A, "Emily_read_reg_flag = 2" means Hx83112C. */
+	if(lcdkit_info.panel_infos.eml_read_reg_flag == Hx83112A)
+	{
+		for(i = 0; i< PROJECT_ID_LENGTH; i++)
+		{
+			project_addr[i] = project_addr_112A[i];
+		}
+		playload1_enter1[1] = playload1_enter1_112A[1];
+		playload1_enter1[2] = playload1_enter1_112A[2];
+		playload1_enter2[1] = playload1_enter2_112A[1];
+		playload1_enter2[2] = playload1_enter2_112A[2];
+	}
+
 
 	if (lcdkit_check_mipi_fifo_empty(hisifd->mipi_dsi0_base))
 	{

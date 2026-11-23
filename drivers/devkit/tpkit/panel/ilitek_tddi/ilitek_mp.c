@@ -443,7 +443,7 @@ static void dump_node_type_buffer(s32 *node_ptr, u8 *name)
 	ili_dump_data(node_ptr, 32, core_mp.frame_len, 0, "Dump NodeType : ");
 }
 
-static int parser_get_ini_key_value(char *section, char *key, char *value, int length)
+static int parser_get_ini_key_value(const char *section, const char *key, char *value, int length)
 {
 	int i = 0;
 	int ret = -2;
@@ -647,7 +647,7 @@ static int parser_get_int_data(const char *section,
 	}
 
 	/* return a white-space string if get nothing */
-	if (parser_get_ini_key_value(section, keyname, value, sizeof(value)/value[0]) < 0) {
+	if (parser_get_ini_key_value(section, keyname, value, sizeof(value)) < 0) {
 		snprintf(rv, rv_len, "%s", value);
 		return 0;
 	}

@@ -585,7 +585,7 @@ int ili_set_tp_data_len(int format, bool send, u8* data)
 		ctrl = DATA_FORMAT_DEBUG_LITE_CMD;
 		break;
 	case DATA_FORMAT_DEBUG_LITE_AREA:
-		if(!cmd || !data) {
+		if(!data) {
 			TS_LOG_ERR("DEBUG_LITE_AREA error cmd or data\n");
 			return -1;
 		}
@@ -647,7 +647,6 @@ int ili_set_tp_data_len(int format, bool send, u8* data)
 int ilitek_read_roi_data(void)
 {
 	int i = 0;
-	u16 raw_data = 0;
 	int ret = 0;
 	struct ts_kit_device_data *ts_dev_data = ilits->ts_dev_data;
 
@@ -745,8 +744,8 @@ int ilitek_tddi_read_report_data(struct ts_fingers *p_info)
 	int tmp = debug_en;
 	/* Just in case these stats couldn't be blocked in top half context */
 	struct ts_kit_device_data *ts_dev_data = ilits->ts_dev_data;
-	struct ts_kit_platform_data *ts_platform_data = ts_dev_data->ts_platform_data;
-	struct ts_easy_wakeup_info *gesture_report_info = &ts_dev_data->easy_wakeup_info;
+	struct ts_kit_platform_data __maybe_unused *ts_platform_data = ts_dev_data->ts_platform_data;
+	struct ts_easy_wakeup_info __maybe_unused *gesture_report_info = &ts_dev_data->easy_wakeup_info;
 
 	if (!ilits->report || atomic_read(&ilits->tp_reset) ||
 		atomic_read(&ilits->fw_stat) || atomic_read(&ilits->tp_sw_mode) ||

@@ -1077,7 +1077,6 @@ void ili_report_gesture_mode(struct ts_fingers *ap_info,u8 *buf, int len)
 	int i, lu_x = 0, lu_y = 0, rd_x = 0, rd_y = 0, score = 0;
 	u8 ges[P5_X_GESTURE_INFO_LENGTH] = {0};
 	struct gesture_coordinate *gc = ilits->gcoord;
-	struct input_dev *input = ilits->input;
 	bool transfer = ilits->trans_xy;
 
 	for (i = 0; i < len; i++)

@@ -318,7 +318,7 @@ struct lcdkit_dsi_read_compare_data
     uint32_t* read_mask;
     char** reg_name;
     int log_on;
-    struct lcdkit_dsi_cmd_desc* cmds;
+    struct lcdkit_dsi_panel_cmds* cmds;
     int cnt;
 };
 
@@ -1227,6 +1227,7 @@ extern int bu21150_otp_read(char *otp_data);
 
 #define LCD_DDIC_INFO_LEN 64
 
+struct hisi_fb_data_type;
 struct ddic_oem_cmd{
 	unsigned char type;
 	#ifndef CONFIG_ARCH_QCOM
