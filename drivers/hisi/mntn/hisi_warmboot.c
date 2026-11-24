@@ -748,6 +748,9 @@ static void warmboot_quiesce_irqs_and_wdt(void)
 void hisi_warmboot_save_dfx(void)
 {
 #ifdef CONFIG_HISI_BB
+	pr_emerg("warmboot: saving dfx tempbuffer (tramp=0x%llx)\n",
+		 g_tramp_page ? (u64)page_to_phys(g_tramp_page) : 0ULL);
+	set_reboot_reason(AP_S_PRESS6S);
 	save_log_to_dfx_tempbuffer(AP_S_PRESS6S);
 #endif
 }

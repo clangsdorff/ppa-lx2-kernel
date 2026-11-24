@@ -1126,7 +1126,7 @@ static void save_buffer_to_dfx_tempbuffer(struct every_number_info *every_number
 
 	sys_close(fd_dfx);
 
-	fd_dfx = sys_open(p_name, O_WRONLY, FILE_LIMIT);
+	fd_dfx = sys_open(p_name, O_WRONLY | O_SYNC, FILE_LIMIT);
 	if (fd_dfx < 0) {
 		BB_PRINT_ERR("%s():%d:open fail[%d]\n", __func__, __LINE__, fd_dfx);
 		goto open_fail;
@@ -1160,6 +1160,7 @@ static void save_buffer_to_dfx_tempbuffer(struct every_number_info *every_number
 	}
 
 close:
+	(void)sys_fsync(fd_dfx);
 	sys_close(fd_dfx);
 open_fail:
 	kfree(buf);
