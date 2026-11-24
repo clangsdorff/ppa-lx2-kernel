@@ -229,6 +229,7 @@ void kernel_restart(char *cmd)
 	usermodehelper_disable();
 	warm = hisi_warmboot_is_ready();
 	if (warm) {
+		hisi_warmboot_tzdriver_close_sessions();
 		hisi_warmboot_modem_power_off();
 		hisi_warmboot_save_dfx();
 		migrate_to_reboot_cpu();

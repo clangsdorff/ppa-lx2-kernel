@@ -17,5 +17,10 @@ int hisi_warmboot_modem_power_on(void);
 static inline int hisi_warmboot_modem_power_off(void) { return 0; }
 static inline int hisi_warmboot_modem_power_on(void) { return -1; }
 #endif
+#if IS_BUILTIN(CONFIG_TZDRIVER)
+int hisi_warmboot_tzdriver_close_sessions(void);
+#else
+static inline int hisi_warmboot_tzdriver_close_sessions(void) { return 0; }
+#endif
 
 #endif

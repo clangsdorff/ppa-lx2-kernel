@@ -1320,6 +1320,9 @@ void del_dev_node(tc_ns_dev_file *dev)
 	/* del dev from the list */
 	list_del(&dev->head);
 	mutex_unlock(&g_tc_ns_dev_list.dev_lock);
+	/* wait for a warmboot close pass that locked dev while it was still listed */
+	mutex_lock(&dev->service_lock);
+	mutex_unlock(&dev->service_lock);
 }
 
 #if defined(CONFIG_TEE_TUI)

@@ -26,6 +26,10 @@
 #include <linux/sched.h>
 #include <asm/cacheflush.h>
 #include <linux/kthread.h>
+#include <linux/kref.h>
+#include <linux/completion.h>
+#include <linux/reboot.h>
+#include <linux/cpu.h>
 #include <linux/freezer.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -73,6 +77,8 @@
 #include "tc_ns_log.h"
 #include "mailbox_mempool.h"
 #include "tz_spi_notify.h"
+#include <linux/delay.h>
+#include <linux/hisi/hisi_warmboot.h>
 
 #ifdef SECURITY_AUTH_ENHANCE
 #include "security_auth_enhance.h"
@@ -1497,6 +1503,7 @@ int tc_ns_client_open(tc_ns_dev_file **dev_file, uint8_t kernel_api)
 		tloge("dev malloc failed\n");
 		return ret;
 	}
+	mutex_init(&dev->service_lock);
 	mutex_lock(&g_tc_ns_dev_list.dev_lock);
 	list_add_tail(&dev->head, &g_tc_ns_dev_list.dev_file_list);
 	mutex_unlock(&g_tc_ns_dev_list.dev_lock);
@@ -1508,7 +1515,6 @@ int tc_ns_client_open(tc_ns_dev_file **dev_file, uint8_t kernel_api)
 	dev->login_setup = 0;
 	dev->kernel_api = kernel_api;
 	dev->load_app_flag = 0;
-	mutex_init(&dev->service_lock);
 	mutex_init(&dev->shared_mem_lock);
 	mutex_init(&dev->login_setup_lock);
 	*dev_file = dev;
@@ -1553,6 +1559,187 @@ int tc_ns_client_close(tc_ns_dev_file *dev)
 	send_crashed_event_response_all(dev);
 	ret = TEEC_SUCCESS;
 	free_dev(dev);
+	return ret;
+}
+
+#define WARMBOOT_LOCK_RETRY 200
+#define WARMBOOT_LOCK_WAIT_MS 10
+
+static bool warmboot_mutex_lock_timeout(struct mutex *lock)
+{
+	int i;
+
+	for (i = 0; i < WARMBOOT_LOCK_RETRY; i++) {
+		if (mutex_trylock(lock))
+			return true;
+		msleep(WARMBOOT_LOCK_WAIT_MS);
+	}
+	return false;
+}
+
+static int warmboot_count_sessions(tc_ns_dev_file *dev, uint32_t index)
+{
+	tc_ns_session *session = NULL;
+	int cnt = 0;
+
+	list_for_each_entry(session, &dev->services[index]->session_list, head) {
+		if (session->owner == dev)
+			cnt++;
+	}
+	return cnt;
+}
+
+/* returns 1 with dev->service_lock held, 0 if dev is gone, -EBUSY if locks stay contended */
+static int warmboot_lock_dev(tc_ns_dev_file *target)
+{
+	tc_ns_dev_file *it = NULL;
+	int i;
+
+	for (i = 0; i < WARMBOOT_LOCK_RETRY; i++) {
+		if (mutex_trylock(&g_tc_ns_dev_list.dev_lock)) {
+			bool found = false;
+			bool locked = false;
+
+			list_for_each_entry(it, &g_tc_ns_dev_list.dev_file_list, head) {
+				if (it == target) {
+					found = true;
+					locked = mutex_trylock(&target->service_lock);
+					break;
+				}
+			}
+			mutex_unlock(&g_tc_ns_dev_list.dev_lock);
+			if (!found)
+				return 0;
+			if (locked)
+				return 1;
+		}
+		msleep(WARMBOOT_LOCK_WAIT_MS);
+	}
+	return -EBUSY;
+}
+
+/* called with dev->service_lock held, drops it */
+static int warmboot_close_dev_sessions(tc_ns_dev_file *dev, int *busy)
+{
+	tc_ns_service *service = NULL;
+	uint32_t index;
+	int closed = 0;
+
+	for (index = 0; index < SERVICES_MAX_COUNT; index++) {
+		service = dev->services[index];
+		if (service == NULL || list_empty(&service->session_list))
+			continue;
+		if (!warmboot_mutex_lock_timeout(&service->operation_lock)) {
+			(*busy)++;
+			continue;
+		}
+		if (!warmboot_mutex_lock_timeout(&service->session_lock)) {
+			mutex_unlock(&service->operation_lock);
+			(*busy)++;
+			continue;
+		}
+		closed += warmboot_count_sessions(dev, index);
+		close_session_in_service_list(dev, service, index);
+		mutex_unlock(&service->session_lock);
+		mutex_unlock(&service->operation_lock);
+	}
+	mutex_unlock(&dev->service_lock);
+	return closed;
+}
+
+struct warmboot_close_ctx {
+	struct kref ref;
+	struct completion done;
+	int ret;
+};
+
+static void warmboot_close_ctx_release(struct kref *ref)
+{
+	kfree(container_of(ref, struct warmboot_close_ctx, ref));
+}
+
+static int warmboot_close_pass(void)
+{
+	tc_ns_dev_file **devs = NULL;
+	tc_ns_dev_file *dev = NULL;
+	int ndev = 0;
+	int nfound = 0;
+	int closed = 0;
+	int busy = 0;
+	int i;
+
+	if (!warmboot_mutex_lock_timeout(&g_tc_ns_dev_list.dev_lock)) {
+		pr_err("warmboot: tzdriver dev list busy, sessions not closed\n");
+		return -EBUSY;
+	}
+	list_for_each_entry(dev, &g_tc_ns_dev_list.dev_file_list, head)
+		ndev++;
+	devs = kcalloc(ndev ? ndev : 1, sizeof(*devs), GFP_KERNEL);
+	if (devs == NULL) {
+		mutex_unlock(&g_tc_ns_dev_list.dev_lock);
+		pr_err("warmboot: tzdriver session close alloc failed\n");
+		return -ENOMEM;
+	}
+	list_for_each_entry(dev, &g_tc_ns_dev_list.dev_file_list, head)
+		devs[nfound++] = dev;
+	mutex_unlock(&g_tc_ns_dev_list.dev_lock);
+
+	for (i = 0; i < nfound; i++) {
+		int locked = warmboot_lock_dev(devs[i]);
+
+		if (locked < 0)
+			busy++;
+		else if (locked > 0)
+			closed += warmboot_close_dev_sessions(devs[i], &busy);
+	}
+	kfree(devs);
+	pr_err("warmboot: tzdriver closed %d sessions in %d dev files, %d locks busy\n",
+		closed, nfound, busy);
+	return busy ? -EBUSY : 0;
+}
+
+static int warmboot_close_thread(void *data)
+{
+	struct warmboot_close_ctx *ctx = data;
+
+	ctx->ret = warmboot_close_pass();
+	complete(&ctx->done);
+	kref_put(&ctx->ref, warmboot_close_ctx_release);
+	return 0;
+}
+
+#define WARMBOOT_CLOSE_DEADLINE_MS 3000
+
+int hisi_warmboot_tzdriver_close_sessions(void)
+{
+	struct warmboot_close_ctx *ctx = NULL;
+	struct task_struct *task = NULL;
+	int ret;
+
+	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
+	if (ctx == NULL)
+		return -ENOMEM;
+	kref_init(&ctx->ref);
+	kref_get(&ctx->ref);
+	init_completion(&ctx->done);
+	task = kthread_create(warmboot_close_thread, ctx, "tz_wb_close");
+	if (IS_ERR(task)) {
+		pr_err("warmboot: tzdriver close thread create failed\n");
+		kfree(ctx);
+		return PTR_ERR(task);
+	}
+	/* keep the worker on the reboot cpu so disable_nonboot_cpus never has to move it */
+	if (cpu_online(reboot_cpu))
+		kthread_bind(task, reboot_cpu);
+	wake_up_process(task);
+	if (!wait_for_completion_timeout(&ctx->done,
+		msecs_to_jiffies(WARMBOOT_CLOSE_DEADLINE_MS))) {
+		pr_err("warmboot: tzdriver session close timed out, jumping anyway\n");
+		kref_put(&ctx->ref, warmboot_close_ctx_release);
+		return -ETIMEDOUT;
+	}
+	ret = ctx->ret;
+	kref_put(&ctx->ref, warmboot_close_ctx_release);
 	return ret;
 }
 
