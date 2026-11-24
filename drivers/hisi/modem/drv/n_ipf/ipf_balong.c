@@ -797,6 +797,8 @@ int reset_ipf_psam_from_sys(void)
 	void* base_addr;
 
     base_addr = g_ipf_ctx.peribase;
+    if (!base_addr)
+        return -ENODEV;
     
 	regvalue = readl((unsigned char*)base_addr+ g_ipf_ctx.reset_peri_crg[1]);
 	regvalue |= g_ipf_ctx.reset_peri_crg[4];
@@ -877,6 +879,11 @@ static int ipf_probe(struct platform_device *pdev)
     {
         bsp_err("ipf peribase ioremap_nocache failed\n");
     }
+	if (of_chosen && of_property_read_bool(of_chosen, "hisi,warmboot") &&
+	    g_ipf_ctx.peribase) {
+		pr_err("warmboot: resetting ipf/psam via peri_crg in ipf_probe\n");
+		reset_ipf_psam_from_sys();
+	}
 	g_ipf_ctx.limit_addr = (IPF_LIMIT_ADDR_S *)sm->trans_limit;
     g_ipf_ctx.memblock_show = (unsigned long *)sm->memlock;
 	memset_s((void*)sm->trans_limit, sizeof(sm->trans_limit), 0x0, IPF_TRANS_LIMIT_SIZE);
@@ -940,6 +947,7 @@ EXPORT_SYMBOL(mdrv_ipf_get_dlrd_num);
 EXPORT_SYMBOL(mdrv_ipf_get_ulrd_num);
 EXPORT_SYMBOL(mdrv_ipf_register_ops);
 EXPORT_SYMBOL(ipf_register_wakeup_dlcb);
+EXPORT_SYMBOL(reset_ipf_psam_from_sys);
 
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:ipf");

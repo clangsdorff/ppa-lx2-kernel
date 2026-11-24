@@ -1171,6 +1171,14 @@ int __init bsp_reset_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_IPF_SUPPORT
+extern int reset_ipf_psam_from_sys(void);
+extern void mdrv_ipf_reinit_dlreg(void);
+#else
+static inline int reset_ipf_psam_from_sys(void) { return 0; }
+static inline void mdrv_ipf_reinit_dlreg(void) {}
+#endif
+
 int hisi_warmboot_modem_power_off(void)
 {
 	s32 ret;
@@ -1180,11 +1188,11 @@ int hisi_warmboot_modem_power_off(void)
 	if (!g_modem_reset_ctrl.state)
 		return 0;
 
-	pr_warn("warmboot: powering off modem before jump\n");
+	pr_err("warmboot: powering off modem before jump\n");
 	ccore_ipc_disable();
 	ret = do_power_off(MODEM_POWER_OFF);
 	if (ret != RESET_OK) {
-		pr_warn("warmboot: do_power_off failed (%d), forcing LPM3 modem off\n",
+		pr_err("warmboot: do_power_off failed (%d), forcing LPM3 modem off\n",
 			ret);
 		bsp_reset_bootflag_set(CCORE_IS_REBOOT);
 		(void)bsp_sec_call(FUNC_ICC_MSG_SWITCH_OFF, 0);
@@ -1192,10 +1200,10 @@ int hisi_warmboot_modem_power_off(void)
 		msleep(50);
 		msg = RESET_INFO_MAKEUP(MODEM_POWER_OFF, MDRV_RESET_CB_BEFORE);
 		ret = send_sync_msg_to_mcore(msg, &ack_val);
-		pr_warn("warmboot: forced LPM3 modem off ret=%d ack=0x%x\n",
+		pr_err("warmboot: forced LPM3 modem off ret=%d ack=0x%x\n",
 			ret, ack_val);
 	} else {
-		pr_warn("warmboot: modem power_off succeeded\n");
+		pr_err("warmboot: modem power_off succeeded\n");
 	}
 	return ret;
 }
@@ -1210,7 +1218,7 @@ int hisi_warmboot_modem_power_on(void)
 	if (!g_modem_reset_ctrl.state)
 		return -1;
 
-	pr_warn("warmboot: powering on modem via LPM3 reset sequence (was_off=%d)\n",
+	pr_err("warmboot: powering on modem via LPM3 reset sequence (was_off=%d)\n",
 		g_warmboot_modem_was_off ? 1 : 0);
 	bsp_reset_bootflag_set(CCORE_IS_REBOOT);
 
@@ -1221,13 +1229,20 @@ int hisi_warmboot_modem_power_on(void)
 		msleep(50);
 		msg = RESET_INFO_MAKEUP(MODEM_POWER_OFF, MDRV_RESET_CB_BEFORE);
 		ret = send_sync_msg_to_mcore(msg, &ack_val);
-		pr_warn("warmboot: late LPM3 modem off ret=%d ack=0x%x\n",
+		pr_err("warmboot: late LPM3 modem off ret=%d ack=0x%x\n",
 			ret, ack_val);
 	}
 
+	ret = invoke_reset_cb(MDRV_RESET_CB_BEFORE);
+	pr_err("warmboot: invoke_reset_cb before ret=%d\n", ret);
+
+	ret = reset_ipf_psam_from_sys();
+	pr_err("warmboot: reset_ipf_psam_from_sys ret=%d\n", ret);
+	mdrv_ipf_reinit_dlreg();
+
 	ret = icc_channel_reset(MDRV_RESET_RESETTING, 0);
 	if (ret != RESET_OK)
-		pr_warn("warmboot: icc_channel_reset ret=%d\n", ret);
+		pr_err("warmboot: icc_channel_reset ret=%d\n", ret);
 
 	ret = bsp_load_modem_images();
 	if (ret) {
@@ -1238,23 +1253,22 @@ int hisi_warmboot_modem_power_on(void)
 
 	msg = RESET_INFO_MAKEUP(MODEM_POWER_ON, (u32)MDRV_RESET_RESETTING);
 	ret = send_sync_msg_to_mcore(msg, &ack_val);
-	pr_warn("warmboot: lpm3 modem resetting ret=%d ack=0x%x\n", ret, ack_val);
+	pr_err("warmboot: lpm3 modem resetting ret=%d ack=0x%x\n", ret, ack_val);
 
 	ccore_ipc_enable();
 	ret = drv_reset_cb(MDRV_RESET_RESETTING, 0);
 	if (ret < 0)
-		pr_warn("warmboot: drv_reset_cb resetting ret=%d\n", ret);
+		pr_err("warmboot: drv_reset_cb resetting ret=%d\n", ret);
 
 	ret = wait_for_ccore_reset_done(RESET_WAIT_CCPU_STARTUP_TIMEOUT);
-	pr_warn("warmboot: wait_for_ccore_reset_done ret=%d\n", ret);
+	pr_err("warmboot: wait_for_ccore_reset_done ret=%d\n", ret);
 
-	ret = drv_reset_cb(MDRV_RESET_CB_AFTER, 0);
-	if (ret < 0)
-		pr_warn("warmboot: drv_reset_cb after ret=%d\n", ret);
+	ret = invoke_reset_cb(MDRV_RESET_CB_AFTER);
+	pr_err("warmboot: invoke_reset_cb after ret=%d\n", ret);
 
 	msg = RESET_INFO_MAKEUP(MODEM_POWER_ON, MDRV_RESET_CB_AFTER);
 	ret = send_sync_msg_to_mcore(msg, &ack_val);
-	pr_warn("warmboot: lpm3 modem after ret=%d ack=0x%x\n", ret, ack_val);
+	pr_err("warmboot: lpm3 modem after ret=%d ack=0x%x\n", ret, ack_val);
 
 	bsp_reset_bootflag_set(CCORE_BOOT_NORMAL);
 	return 0;
