@@ -11,6 +11,23 @@
  *   x1 = physical address of prepared FDT (0xba800000)
  *   x2 = physical address of kernel Image entry (0x00080000)
  */
+	.macro	spmi_set_keypoint, val, base_x, tmp_w, cnt_x
+	mov	\base_x, #0x4000
+	movk	\base_x, #0xfff2, lsl #16
+	mov	\tmp_w, #(\val << 24)
+	str	\tmp_w, [\base_x, #0x704]
+	mov	\tmp_w, #0x01e2
+	movk	\tmp_w, #0x8500, lsl #16
+	str	\tmp_w, [\base_x, #0x700]
+	dsb	sy
+	mov	\cnt_x, #0x10000
+77:	ldr	\tmp_w, [\base_x, #0x800]
+	tbnz	\tmp_w, #0, 78f
+	subs	\cnt_x, \cnt_x, #1
+	b.ne	77b
+78:
+	.endm
+
 ENTRY(hisi_warmboot_relocate)
 	mov	x18, x0
 	mov	x17, x1
@@ -27,6 +44,7 @@ ENTRY(hisi_warmboot_relocate)
 	msr	sctlr_el2, x0
 	isb
 1:
+	spmi_set_keypoint 61, x9, w10, x11
 
 .Lseg_loop:
 	ldr	x13, [x18, #0]
@@ -84,6 +102,7 @@ ENTRY(hisi_warmboot_relocate)
 	ic	iallu
 	dsb	sy
 	isb
+	spmi_set_keypoint 62, x9, w10, x11
 
 	mov	x0, x17
 	mov	x1, xzr

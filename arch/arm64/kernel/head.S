@@ -121,6 +121,20 @@ pe_header:
 	 */
 ENTRY_NOTAG(stext)
 	bl	preserve_boot_args
+	mov	x9, #0x4000
+	movk	x9, #0xfff2, lsl #16
+	mov	w10, #(63 << 24)
+	str	w10, [x9, #0x704]
+	mov	w10, #0x01e2
+	movk	w10, #0x8500, lsl #16
+	str	w10, [x9, #0x700]
+	dsb	sy
+	mov	x11, #0x10000
+77:	ldr	w10, [x9, #0x800]
+	tbnz	w10, #0, 78f
+	subs	x11, x11, #1
+	b.ne	77b
+78:
 	bl	el2_setup			// Drop to EL1, w0=cpu_boot_mode
 	adrp	x23, __PHYS_OFFSET
 	and	x23, x23, MIN_KIMG_ALIGN - 1	// KASLR offset, defaults to 0
@@ -133,6 +147,20 @@ ENTRY_NOTAG(stext)
 	 * the TCR will have been set.
 	 */
 	bl	__cpu_setup			// initialise processor
+	mov	x9, #0x4000
+	movk	x9, #0xfff2, lsl #16
+	mov	w10, #(64 << 24)
+	str	w10, [x9, #0x704]
+	mov	w10, #0x01e2
+	movk	w10, #0x8500, lsl #16
+	str	w10, [x9, #0x700]
+	dsb	sy
+	mov	x11, #0x10000
+79:	ldr	w10, [x9, #0x800]
+	tbnz	w10, #0, 80f
+	subs	x11, x11, #1
+	b.ne	79b
+80:
 	b	__primary_switch
 ENDPROC(stext)
 

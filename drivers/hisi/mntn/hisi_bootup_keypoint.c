@@ -44,7 +44,7 @@ static u32 fpga_flag;
  */
 void set_boot_keypoint(u32 value)
 {
-	if (value < STAGE_KERNEL_BOOTANIM_COMPLETE || value > STAGE_END) {
+	if (value < 60 || value > STAGE_END) {
 		BB_PRINT_ERR("value[%u] is invilad\n", value);
 		return;
 	}

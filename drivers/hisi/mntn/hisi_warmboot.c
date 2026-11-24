@@ -30,8 +30,11 @@
 #include <linux/jiffies.h>
 #include <linux/hisi/hisi_warmboot.h>
 #ifdef CONFIG_HISI_BB
+#include <linux/hisi/hisi_bootup_keypoint.h>
 #include <linux/hisi/rdr_pub.h>
 #include <linux/hisi/rdr_hisi_platform.h>
+#include <linux/hisi/util.h>
+extern void mntn_print_to_ramconsole(const char *fmt, ...);
 #endif
 #include <asm/cacheflush.h>
 #include <asm/mmu_context.h>
@@ -727,7 +730,10 @@ static void warmboot_quiesce_irqs_and_wdt(void)
 		writel_relaxed(0x1ACCE551,
 			       wdt_base + SOC_RTCTIMERWDT_WDLOCK_ADDR(0));
 		writel_relaxed(0, wdt_base + SOC_RTCTIMERWDT_WDCONTROL_ADDR(0));
+		writel_relaxed(15 * 32768 - 1,
+			       wdt_base + SOC_RTCTIMERWDT_WDLOAD_ADDR(0));
 		writel_relaxed(1, wdt_base + SOC_RTCTIMERWDT_WDINTCLR_ADDR(0));
+		writel_relaxed(3, wdt_base + SOC_RTCTIMERWDT_WDCONTROL_ADDR(0));
 		writel_relaxed(1, wdt_base + SOC_RTCTIMERWDT_WDLOCK_ADDR(0));
 		readl_relaxed(wdt_base + SOC_RTCTIMERWDT_WDLOCK_ADDR(0));
 	}
@@ -762,6 +768,8 @@ void hisi_warmboot_save_dfx(void)
 #ifdef CONFIG_HISI_BB
 	pr_emerg("warmboot: saving dfx tempbuffer (tramp=0x%llx)\n",
 		 g_tramp_page ? (u64)page_to_phys(g_tramp_page) : 0ULL);
+	mntn_print_to_ramconsole("warmboot: saving dfx tempbuffer (tramp=0x%llx)\n",
+				 g_tramp_page ? (u64)page_to_phys(g_tramp_page) : 0ULL);
 	set_reboot_reason(AP_S_PRESS6S);
 	save_log_to_dfx_tempbuffer(AP_S_PRESS6S);
 #endif
@@ -771,6 +779,11 @@ void __noreturn hisi_warmboot_jump(void)
 {
 	u64 tramp_phys = page_to_phys(g_tramp_page);
 
+#ifdef CONFIG_HISI_BB
+	mntn_print_to_ramconsole("warmboot: jumping to tramp=0x%llx\n",
+				 tramp_phys);
+	set_boot_keypoint(60);
+#endif
 	local_irq_disable();
 	warmboot_quiesce_irqs_and_wdt();
 	flush_cache_all();
