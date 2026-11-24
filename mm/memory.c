@@ -2679,7 +2679,7 @@ void __init warmboot_secpage_early_init(bool is_warmboot)
 			g_warmboot_secpages.count++;
 			memblock_reserve(p, s);
 		}
-		pr_info("warmboot: restored %u TZASC-locked secpage ranges\n",
+		pr_warn("warmboot: restored %u TZASC-locked secpage ranges\n",
 			g_warmboot_secpages.count);
 	} else {
 		memset(pers, 0, PAGE_SIZE);

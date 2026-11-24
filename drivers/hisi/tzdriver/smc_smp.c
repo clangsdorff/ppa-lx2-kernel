@@ -1358,6 +1358,10 @@ clean:
 
 static int smc_svc_thread_fn(void *arg)
 {
+	if (smc_is_warmboot()) {
+		tloge("warmboot: skipping SET_SERVE_CMD (already active in TEE)\n");
+		return 0;
+	}
 	while (!kthread_should_stop()) {
 		tc_ns_smc_cmd smc_cmd = { {0}, 0 };
 		int ret;
@@ -1615,16 +1619,25 @@ int smc_init_data(struct device *class_dev)
 				return -EFAULT;
 			__flush_dcache_area(agent_meta, PAGE_SIZE);
 		} else {
+			unsigned long busy_mask =
+				g_cmd_data->doing_bitmap[0] &
+				~g_cmd_data->out_bitmap[0];
+
 			memset((void *)g_cmd_data->in_bitmap, 0,
 			       sizeof(g_cmd_data->in_bitmap) +
 			       sizeof(g_cmd_data->doing_bitmap) +
 			       sizeof(g_cmd_data->out_bitmap) +
 			       sizeof(g_cmd_data->smc_lock));
+			/* Preserve slots GTask still holds in its private doing_bitmap */
+			g_cmd_data->in_bitmap[0] = busy_mask;
+			g_cmd_data->doing_bitmap[0] = busy_mask;
 			memset((void *)g_cmd_data->in, 0,
 			       sizeof(g_cmd_data->in));
 			memset((void *)g_cmd_data->out, 0,
 			       sizeof(g_cmd_data->out));
 			__flush_dcache_area(g_cmd_data, PAGE_SIZE);
+			tloge("warmboot: preserved busy smc bitmap=0x%lx\n",
+			      busy_mask);
 		}
 	}
 #else
@@ -1641,10 +1654,10 @@ int smc_init_data(struct device *class_dev)
 			ret = -EINVAL;
 			goto free_mem;
 		}
-		if (smc_init_secondary_cpus()) {
-			ret = -EINVAL;
-			goto free_mem;
-		}
+	}
+	if (smc_init_secondary_cpus()) {
+		ret = -EINVAL;
+		goto free_mem;
 	}
 #ifdef SECURITY_AUTH_ENHANCE
 	if (get_session_root_key()) {

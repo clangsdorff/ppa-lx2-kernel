@@ -129,6 +129,11 @@ int tc_ns_register_rdr_mem(void)
 		current_rdr_info.log_len = 0;
 		return ret;
 	}
+	if (smc_is_warmboot()) {
+		tloge("warmboot: reusing pre-registered rdr mem (len=0x%x)\n",
+		      current_rdr_info.log_len);
+		return 0;
+	}
 	rdr_mem_addr = current_rdr_info.log_addr;
 	rdr_mem_len = current_rdr_info.log_len;
 	mb_pack = mailbox_alloc_cmd_pack();
