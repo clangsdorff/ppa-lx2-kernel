@@ -24,6 +24,7 @@
 #include <linux/irqnr.h>
 #include <linux/irqdesc.h>
 #include <linux/io.h>
+#include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/string.h>
 #include <linux/workqueue.h>
@@ -775,10 +776,86 @@ void hisi_warmboot_save_dfx(void)
 #endif
 }
 
+static void warmboot_powerup_media1_crg(void)
+{
+	void __iomem *peri_crg;
+	void __iomem *sctrl;
+	void __iomem *pmctrl;
+	void __iomem *media_crg;
+	u32 pwr_before, mux_val, aod_vote;
+
+	peri_crg = ioremap_nocache(0xFFF35000ULL, 0x1000);
+	sctrl = ioremap_nocache(0xFFF0A000ULL, 0x1000);
+	pmctrl = ioremap_nocache(0xFFF31000ULL, 0x1000);
+	media_crg = ioremap_nocache(0xE87FF000ULL, 0x1000);
+
+	if (!peri_crg || !sctrl || !pmctrl || !media_crg) {
+		pr_err("warmboot: ioremap failed for media1 powerup\n");
+		goto out_unmap;
+	}
+
+	pwr_before = readl(peri_crg + 0x158);
+
+	/* MEDIA1_SUBSYS_PU: enable MTCMOS, unreset media_crg, toggle clks, unisolate */
+	writel(0x00000020, peri_crg + 0x150); /* PERPWREN */
+	udelay(100);
+	writel(0x00040000, peri_crg + 0x0A0); /* PERRSTDIS5 media_crg */
+	writel(0x7C002028, peri_crg + 0x410); /* PEREN6 */
+	writel(0x00000040, sctrl + 0x1B0);    /* SCPEREN4 */
+	writel(0x00000040, peri_crg + 0x040); /* PEREN4 */
+	udelay(2);
+	writel(0x7C002028, peri_crg + 0x414); /* PERDIS6 */
+	writel(0x00000040, sctrl + 0x1B4);    /* SCPERDIS4 */
+	writel(0x00000040, peri_crg + 0x044); /* PERDIS4 */
+	udelay(2);
+	writel(0x00000040, peri_crg + 0x148); /* ISODIS */
+	udelay(1);
+	writel(0x00020000, peri_crg + 0x0A0); /* PERRSTDIS5 media */
+	udelay(1);
+	writel(0x7C002028, peri_crg + 0x410); /* PEREN6 */
+	writel(0x00000040, sctrl + 0x1B0);    /* SCPEREN4 */
+	writel(0x00000040, peri_crg + 0x040); /* PEREN4 */
+	udelay(2);
+
+	/* VIVOBUS_PU: enable vivobus clocks and clear vivobus NoC idle */
+	writel(0x00080008, media_crg + 0x084); /* MEDIA_CLKDIV9 */
+	writel(0x08040040, media_crg + 0x000); /* MEDIA_PEREN0 */
+	udelay(2);
+	writel(0x00040040, media_crg + 0x004); /* MEDIA_PERDIS0 */
+	udelay(2);
+	writel(0x00040040, media_crg + 0x000); /* MEDIA_PEREN0 */
+	writel(0x80000000, pmctrl + 0x380);    /* NOC_POWER_IDLEREQ clear bit 15 */
+	udelay(5);
+
+	/* Ensure DSS stays in softreset so check_dss_is_power_on() runs clean init */
+	writel(0x000000C0, media_crg + 0x030); /* MEDIA_PERRSTEN0 */
+
+	/* Clear AP media1/vivobus/dss AOD vote bits in sctrl+0x438 */
+	aod_vote = readl(sctrl + 0x438);
+	writel(aod_vote & ~0x15U, sctrl + 0x438);
+
+	mux_val = readl(media_crg + 0x074);
+#ifdef CONFIG_HISI_BB
+	mntn_print_to_ramconsole("warmboot: media1 pu pwr=0x%x->0x%x mux074=0x%x\n",
+				 pwr_before, readl(peri_crg + 0x158), mux_val);
+#endif
+
+out_unmap:
+	if (media_crg)
+		iounmap(media_crg);
+	if (pmctrl)
+		iounmap(pmctrl);
+	if (sctrl)
+		iounmap(sctrl);
+	if (peri_crg)
+		iounmap(peri_crg);
+}
+
 void __noreturn hisi_warmboot_jump(void)
 {
 	u64 tramp_phys = page_to_phys(g_tramp_page);
 
+	warmboot_powerup_media1_crg();
 #ifdef CONFIG_HISI_BB
 	mntn_print_to_ramconsole("warmboot: jumping to tramp=0x%llx\n",
 				 tramp_phys);
