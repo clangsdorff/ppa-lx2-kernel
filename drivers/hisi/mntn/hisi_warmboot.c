@@ -539,6 +539,10 @@ static int warmboot_fdt_set_u32_or_u64(void *fdt, int node, const char *name,
 	}
 }
 
+#ifdef CONFIG_LCDKIT_DRIVER
+extern int hostprocessing_get_project_id(char *out);
+#endif
+
 static int warmboot_prepare_dtb(struct warmboot_seg *seg,
 				struct list_head *rejects, u32 ramdisk_size)
 {
@@ -567,6 +571,19 @@ static int warmboot_prepare_dtb(struct warmboot_seg *seg,
 	chosen = fdt_path_offset(fdt, "/chosen");
 	if (chosen >= 0) {
 		fdt_setprop_u32(fdt, chosen, "hisi,warmboot", 1);
+#ifdef CONFIG_LCDKIT_DRIVER
+		{
+			char lcd_pid[24] = {0};
+
+			if (!hostprocessing_get_project_id(lcd_pid) &&
+			    lcd_pid[0] >= 0x20 && lcd_pid[0] < 0x7f) {
+				lcd_pid[sizeof(lcd_pid) - 1] = '\0';
+				fdt_setprop_string(fdt, chosen,
+						   "hisi,lcd_project_id",
+						   lcd_pid);
+			}
+		}
+#endif
 		warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-start",
 					    WARMBOOT_RAMDISK_PHYS);
 		warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-end",

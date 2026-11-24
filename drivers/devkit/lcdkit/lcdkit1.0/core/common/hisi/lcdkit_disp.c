@@ -1,4 +1,5 @@
 #include "hisi_fb.h"
+#include <linux/of.h>
 #include <huawei_ts_kit.h>
 #include <linux/hisi/hw_cmdline_parse.h> //for runmode_is_factory
 #include "lcdkit_effect.h"
@@ -4062,6 +4063,18 @@ static int __init lcdkit_probe(struct platform_device* pdev)
 		if (lcdkit_info.panel_infos.panel_sncode_support &&
 			lcdkit_info.panel_infos.host_info_all_in_ddic)
 			lcdkit_read_panel_sncode(hisi_pdev);
+	} else if (lcdkit_info.panel_infos.is_hostprocessing &&
+		   lcdkit_info.panel_infos.host_info_all_in_ddic) {
+		const char *wb_pid = NULL;
+
+		if (of_chosen &&
+		    !of_property_read_string(of_chosen, "hisi,lcd_project_id", &wb_pid) &&
+		    wb_pid && wb_pid[0]) {
+			strncpy(g_project_id, wb_pid, LCD_DDIC_INFO_LEN - 1);
+			g_project_id[LCD_DDIC_INFO_LEN - 1] = '\0';
+		}
+		lcdkit_check_project_id();
+		pr_err("warmboot: lcd project_id=%s\n", g_project_id);
 	}
 	if (lcdkit_info.panel_infos.lcd_version_support) {
 		sharp_panel_read();
