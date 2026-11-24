@@ -43,6 +43,8 @@
 #include <linux/genhd.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
+#include <linux/workqueue.h>
+#include <linux/jiffies.h>
 #include <linux/hisi/hisi_warmboot.h>
 #define HISI_LOG_TAG HISI_POWEROFF_TAG
 #define IOMAP_ADD_INDEX 0
@@ -66,6 +68,32 @@ static unsigned int g_powerhold_protect_bit = 0xFF;
 static void __iomem *sysctrl_base = NULL;
 static int g_force_bootrom_reset;
 static int g_bootrom_armed;
+
+#define BOOTROM_AUTO_ARM_MAX_TRIES	30
+#define BOOTROM_AUTO_ARM_DELAY_JIFFIES	(2 * HZ)
+
+static int g_bootrom_auto_tries;
+static struct delayed_work g_bootrom_auto_work;
+
+static int hisi_invalidate_boot0_xloader(void);
+
+static void hisi_bootrom_auto_arm_work_fn(struct work_struct *work)
+{
+	int ret;
+
+	if (g_bootrom_armed)
+		return;
+
+	ret = hisi_invalidate_boot0_xloader();
+	if (!ret) {
+		pr_info("hisi_poweroff: auto-armed bootrom_reboot\n");
+		return;
+	}
+
+	if (++g_bootrom_auto_tries < BOOTROM_AUTO_ARM_MAX_TRIES)
+		schedule_delayed_work(&g_bootrom_auto_work,
+				      BOOTROM_AUTO_ARM_DELAY_JIFFIES);
+}
 
 static bool hisi_is_bootrom_cmd(const char *cmd)
 {
@@ -341,11 +369,15 @@ static int hi3xxx_reset_probe(struct platform_device *pdev)
 	if (ret)
 		BB_PRINT_ERR("%s: sysfs_create_file warm_reboot failed: %d\n", __func__, ret);
 
+	INIT_DELAYED_WORK(&g_bootrom_auto_work, hisi_bootrom_auto_arm_work_fn);
+	schedule_delayed_work(&g_bootrom_auto_work, BOOTROM_AUTO_ARM_DELAY_JIFFIES);
+
 	return 0;
 }
 
 static int hi3xxx_reset_remove(struct platform_device *pdev)
 {
+	cancel_delayed_work_sync(&g_bootrom_auto_work);
 	hisi_warmboot_exit_sysfs();
 	sysfs_remove_file(kernel_kobj, &bootrom_reboot_attr.attr);
 	unregister_reboot_notifier(&hisi_bootrom_reboot_nb);

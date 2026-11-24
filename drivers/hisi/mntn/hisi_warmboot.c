@@ -26,6 +26,8 @@
 #include <linux/io.h>
 #include <linux/mutex.h>
 #include <linux/string.h>
+#include <linux/workqueue.h>
+#include <linux/jiffies.h>
 #include <linux/hisi/hisi_warmboot.h>
 #ifdef CONFIG_HISI_BB
 #include <linux/hisi/rdr_pub.h>
@@ -98,6 +100,14 @@ static struct page *g_tramp_page;
 static char g_boot_path[256] = "mmcblk0p47";
 static int g_warmboot_armed;
 static int g_warmboot_ready;
+
+#define WARMBOOT_AUTO_ARM_MAX_TRIES	30
+#define WARMBOOT_AUTO_ARM_DELAY_JIFFIES	(2 * HZ)
+
+static int g_warmboot_user_disarmed;
+static int g_warmboot_auto_tries;
+static void warmboot_auto_arm_work_fn(struct work_struct *work);
+static DECLARE_DELAYED_WORK(g_warmboot_auto_work, warmboot_auto_arm_work_fn);
 
 static bool warmboot_range_excluded(u64 start, u64 size)
 {
@@ -626,6 +636,8 @@ bool hisi_warmboot_is_ready(void)
 
 void hisi_warmboot_disarm(void)
 {
+	g_warmboot_user_disarmed = 1;
+	cancel_delayed_work(&g_warmboot_auto_work);
 	mutex_lock(&g_warmboot_lock);
 	g_warmboot_armed = 0;
 	warmboot_free_all();
@@ -767,6 +779,32 @@ void __noreturn hisi_warmboot_jump(void)
 	unreachable();
 }
 
+static void warmboot_auto_arm_work_fn(struct work_struct *work)
+{
+	int ret;
+
+	if (g_warmboot_user_disarmed || hisi_warmboot_is_ready())
+		return;
+
+	ret = hisi_warmboot_prepare("warm");
+	if (!ret) {
+		mutex_lock(&g_warmboot_lock);
+		if (!g_warmboot_user_disarmed && g_warmboot_ready)
+			g_warmboot_armed = 1;
+		mutex_unlock(&g_warmboot_lock);
+		pr_info("warmboot: auto-armed default warm reboot\n");
+		return;
+	}
+
+	if (++g_warmboot_auto_tries < WARMBOOT_AUTO_ARM_MAX_TRIES &&
+	    !g_warmboot_user_disarmed)
+		schedule_delayed_work(&g_warmboot_auto_work,
+				      WARMBOOT_AUTO_ARM_DELAY_JIFFIES);
+	else
+		pr_err("warmboot: auto-arm gave up after %d tries (last=%d)\n",
+		       g_warmboot_auto_tries, ret);
+}
+
 static ssize_t warm_reboot_show(struct kobject *kobj,
 				struct kobj_attribute *attr, char *buf)
 {
@@ -798,14 +836,18 @@ static ssize_t warm_reboot_store(struct kobject *kobj,
 		mutex_unlock(&g_warmboot_lock);
 		return count;
 	}
-	if (sysfs_streq(buf, "arm")) {
+	if (sysfs_streq(buf, "arm") || sysfs_streq(buf, "on")) {
+		g_warmboot_user_disarmed = 0;
 		ret = hisi_warmboot_prepare("warm");
 		if (ret)
 			return ret;
 		g_warmboot_armed = 1;
 		return count;
 	}
-	if (sysfs_streq(buf, "disarm")) {
+	if (sysfs_streq(buf, "disarm") || sysfs_streq(buf, "0") ||
+	    sysfs_streq(buf, "off")) {
+		g_warmboot_user_disarmed = 1;
+		cancel_delayed_work(&g_warmboot_auto_work);
 		mutex_lock(&g_warmboot_lock);
 		g_warmboot_armed = 0;
 		warmboot_free_all();
@@ -814,6 +856,7 @@ static ssize_t warm_reboot_store(struct kobject *kobj,
 	}
 	if (sysfs_streq(buf, "1") || sysfs_streq(buf, "now") ||
 	    sysfs_streq(buf, "warm")) {
+		g_warmboot_user_disarmed = 0;
 		ret = hisi_warmboot_prepare("warm");
 		if (ret)
 			return ret;
@@ -822,6 +865,7 @@ static ssize_t warm_reboot_store(struct kobject *kobj,
 		return count;
 	}
 	if (sysfs_streq(buf, "recovery")) {
+		g_warmboot_user_disarmed = 0;
 		ret = hisi_warmboot_prepare("recovery");
 		if (ret)
 			return ret;
@@ -837,13 +881,21 @@ static struct kobj_attribute warm_reboot_attr =
 
 int hisi_warmboot_init_sysfs(void)
 {
-	return sysfs_create_file(kernel_kobj, &warm_reboot_attr.attr);
+	int ret;
+
+	ret = sysfs_create_file(kernel_kobj, &warm_reboot_attr.attr);
+	if (ret)
+		return ret;
+
+	INIT_DELAYED_WORK(&g_warmboot_auto_work, warmboot_auto_arm_work_fn);
+	schedule_delayed_work(&g_warmboot_auto_work,
+			      WARMBOOT_AUTO_ARM_DELAY_JIFFIES);
+	return 0;
 }
 
 void hisi_warmboot_exit_sysfs(void)
 {
+	cancel_delayed_work_sync(&g_warmboot_auto_work);
 	sysfs_remove_file(kernel_kobj, &warm_reboot_attr.attr);
-	mutex_lock(&g_warmboot_lock);
-	warmboot_free_all();
-	mutex_unlock(&g_warmboot_lock);
+	hisi_warmboot_disarm();
 }
