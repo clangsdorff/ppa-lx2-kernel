@@ -53,6 +53,7 @@
 #include "teek_ns_client.h"
 #include "teek_client_type.h"
 #include "teek_client_api.h"
+#include "smc.h"
 #include "tui.h"
 #include "smc.h"
 #include "tc_ns_client.h"
@@ -829,6 +830,15 @@ int load_tui_font_file(ttf_type type, unsigned int arg)
 	tui_ion_mem *tui_ttf_mem = NULL;
 
 	tloge("====load ttf start type = %u=====\n", type);
+	if (smc_is_warmboot()) {
+		if (normal == type) {
+			mutex_lock(&tui_drv_lock);
+			normal_load_flag = 1;
+			mutex_unlock(&tui_drv_lock);
+		}
+		tloge("warmboot: skipping ttf reload (already in TEE)\n");
+		return 0;
+	}
 	if (normal == type) {
 		mutex_lock(&tui_drv_lock);
 		if (normal_load_flag) {

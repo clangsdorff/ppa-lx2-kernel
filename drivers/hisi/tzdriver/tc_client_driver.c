@@ -2155,14 +2155,18 @@ static int tc_teeos_init(struct device *class_dev)
 
 	// following failure don't block tzdriver init proc;
 	agent_init();
-	ret = tc_ns_register_ion_mem();
-	if (ret < 0)
-		pr_err("Failed to register ion mem in tee.\n");
+	if (!smc_is_warmboot()) {
+		ret = tc_ns_register_ion_mem();
+		if (ret < 0)
+			pr_err("Failed to register ion mem in tee.\n");
 
 #if defined(CONFIG_TEELOG)
-	ret = tc_ns_register_rdr_mem();
-	if (ret)
-		tloge("TC_NS_register_rdr_mem failed %x\n", ret);
+		ret = tc_ns_register_rdr_mem();
+		if (ret)
+			tloge("TC_NS_register_rdr_mem failed %x\n", ret);
+#endif
+	}
+#if defined(CONFIG_TEELOG)
 	ret = teeos_register_exception();   /* 0:error */
 	if (ret != 0)
 		tloge("teeos_register_exception to rdr failed\n");

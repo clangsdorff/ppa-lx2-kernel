@@ -2632,6 +2632,15 @@ extern int apply_to_page_range(struct mm_struct *mm, unsigned long address,
 extern void change_secpage_range(phys_addr_t phys, unsigned long addr,
 		      unsigned long size, pgprot_t prot);
 
+#define WARMBOOT_SECPAGE_PHYS  0x0fffc000ULL
+#define WARMBOOT_SECPAGE_MAGIC 0x53454350U
+#define WARMBOOT_SECPAGE_MAX   128
+
+void warmboot_secpage_early_init(bool is_warmboot);
+unsigned int warmboot_secpage_count(void);
+bool warmboot_secpage_get(unsigned int idx, phys_addr_t *phys, phys_addr_t *size);
+bool warmboot_secpage_overlaps(phys_addr_t start, phys_addr_t size);
+
 #ifdef CONFIG_PAGE_POISONING
 extern bool page_poisoning_enabled(void);
 extern void kernel_poison_pages(struct page *page, int numpages, int enable);

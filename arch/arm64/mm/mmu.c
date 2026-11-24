@@ -25,6 +25,7 @@
 #include <linux/ioport.h>
 #include <linux/kexec.h>
 #include <linux/libfdt.h>
+#include <linux/of_fdt.h>
 #include <linux/mman.h>
 #include <linux/nodemask.h>
 #include <linux/memblock.h>
@@ -424,6 +425,18 @@ static void __init map_mem(pgd_t *pgd)
 	phys_addr_t kernel_end = __pa_symbol(__init_begin);
 	struct memblock_region *reg;
 	int flags = 0;
+	unsigned int sp_i;
+	phys_addr_t sp_phys, sp_size;
+	bool is_wb = false;
+
+	if (initial_boot_params) {
+		int chosen = fdt_path_offset(initial_boot_params, "/chosen");
+
+		if (chosen >= 0 &&
+		    fdt_getprop(initial_boot_params, chosen, "hisi,warmboot", NULL))
+			is_wb = true;
+	}
+	warmboot_secpage_early_init(is_wb);
 
 	if (debug_pagealloc_enabled())
 		flags = NO_BLOCK_MAPPINGS | NO_CONT_MAPPINGS;
@@ -435,6 +448,10 @@ static void __init map_mem(pgd_t *pgd)
 	 * the following for-loop
 	 */
 	memblock_mark_nomap(kernel_start, kernel_end - kernel_start);
+	for (sp_i = 0; sp_i < warmboot_secpage_count(); sp_i++) {
+		if (warmboot_secpage_get(sp_i, &sp_phys, &sp_size))
+			memblock_mark_nomap(sp_phys, sp_size);
+	}
 #ifdef CONFIG_KEXEC_CORE
 	if (crashk_res.end)
 		memblock_mark_nomap(crashk_res.start,
@@ -487,6 +504,14 @@ static void __init map_mem(pgd_t *pgd)
 				     resource_size(&crashk_res));
 	}
 #endif
+	for (sp_i = 0; sp_i < warmboot_secpage_count(); sp_i++) {
+		if (warmboot_secpage_get(sp_i, &sp_phys, &sp_size)) {
+			__map_memblock(pgd, sp_phys, sp_phys + sp_size,
+				       __pgprot(PROT_DEVICE_nGnRE),
+				       NO_BLOCK_MAPPINGS | NO_CONT_MAPPINGS);
+			memblock_clear_nomap(sp_phys, sp_size);
+		}
+	}
 }
 
 void mark_rodata_ro(void)

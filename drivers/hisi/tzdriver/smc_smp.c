@@ -1635,14 +1635,16 @@ int smc_init_data(struct device *class_dev)
 
 	g_cmd_phys = virt_to_phys(g_cmd_data);
 #endif
-	/* Send the allocated buffer to TrustedCore for init */
-	if (smc_set_cmd_buffer()) {
-		ret = -EINVAL;
-		goto free_mem;
-	}
-	if (smc_init_secondary_cpus()) {
-		ret = -EINVAL;
-		goto free_mem;
+	if (!g_smc_warmboot) {
+		/* Send the allocated buffer to TrustedCore for init */
+		if (smc_set_cmd_buffer()) {
+			ret = -EINVAL;
+			goto free_mem;
+		}
+		if (smc_init_secondary_cpus()) {
+			ret = -EINVAL;
+			goto free_mem;
+		}
 	}
 #ifdef SECURITY_AUTH_ENHANCE
 	if (get_session_root_key()) {

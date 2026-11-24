@@ -135,7 +135,18 @@ static int __init cma_activate_area(struct cma *cma)
 			if (page_zone(pfn_to_page(pfn)) != zone)
 				goto not_in_zone;
 		}
-		init_cma_reserved_pageblock(pfn_to_page(base_pfn));
+		if (warmboot_secpage_overlaps(PFN_PHYS(base_pfn),
+					      pageblock_nr_pages << PAGE_SHIFT)) {
+			unsigned long bit_no = (base_pfn - cma->base_pfn) >>
+						cma->order_per_bit;
+			unsigned long bit_cnt = cma_bitmap_pages_to_bits(cma,
+						pageblock_nr_pages);
+			bitmap_set(cma->bitmap, bit_no, bit_cnt);
+			pr_info("warmboot: skipping TZASC-locked CMA pageblock 0x%llx\n",
+				(u64)PFN_PHYS(base_pfn));
+		} else {
+			init_cma_reserved_pageblock(pfn_to_page(base_pfn));
+		}
 	} while (--i);
 
 	mutex_init(&cma->lock);

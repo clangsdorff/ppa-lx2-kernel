@@ -52,7 +52,7 @@ extern void mntn_print_to_ramconsole(const char *fmt, ...);
 
 #define WARMBOOT_TEE_MBOX_START		0x0f800000ULL
 #define WARMBOOT_TEE_MBOX_END		0x0fc00000ULL
-#define WARMBOOT_TEE_RESV_START		0x0fffd000ULL
+#define WARMBOOT_TEE_RESV_START		0x0fffc000ULL
 #define WARMBOOT_TEE_RESV_END		0x10000000ULL
 
 #define PART_RAMDISK			21

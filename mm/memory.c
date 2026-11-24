@@ -78,6 +78,10 @@
 #include <asm/tlb.h>
 #include <asm/tlbflush.h>
 #include <asm/pgtable.h>
+#ifdef CONFIG_ARM64
+#include <linux/memblock.h>
+#include <asm/cacheflush.h>
+#endif
 
 #include "internal.h"
 
@@ -2635,6 +2639,121 @@ static void change_pud_range(pgd_t *pgd, phys_addr_t phys,
 
 	pud_clear_fixmap();
 }
+#ifdef CONFIG_ARM64
+struct warmboot_secpage_entry {
+	u64 phys;
+	u64 size;
+};
+
+struct warmboot_secpage_table {
+	u32 magic;
+	u32 count;
+	u64 reserved;
+	struct warmboot_secpage_entry entries[WARMBOOT_SECPAGE_MAX];
+};
+
+static struct warmboot_secpage_table g_warmboot_secpages;
+
+void __init warmboot_secpage_early_init(bool is_warmboot)
+{
+	struct warmboot_secpage_table *pers;
+	unsigned int i;
+
+	g_warmboot_secpages.magic = WARMBOOT_SECPAGE_MAGIC;
+	g_warmboot_secpages.count = 0;
+
+	pers = early_memremap(WARMBOOT_SECPAGE_PHYS, PAGE_SIZE);
+	if (!pers)
+		return;
+
+	if (is_warmboot && pers->magic == WARMBOOT_SECPAGE_MAGIC &&
+	    pers->count <= WARMBOOT_SECPAGE_MAX) {
+		for (i = 0; i < pers->count; i++) {
+			u64 p = pers->entries[i].phys;
+			u64 s = pers->entries[i].size;
+
+			if (!s || !PAGE_ALIGNED(p) || !PAGE_ALIGNED(s))
+				continue;
+			g_warmboot_secpages.entries[g_warmboot_secpages.count].phys = p;
+			g_warmboot_secpages.entries[g_warmboot_secpages.count].size = s;
+			g_warmboot_secpages.count++;
+			memblock_reserve(p, s);
+		}
+		pr_info("warmboot: restored %u TZASC-locked secpage ranges\n",
+			g_warmboot_secpages.count);
+	} else {
+		memset(pers, 0, PAGE_SIZE);
+		pers->magic = WARMBOOT_SECPAGE_MAGIC;
+		__flush_dcache_area(pers, PAGE_SIZE);
+	}
+	early_memunmap(pers, PAGE_SIZE);
+}
+
+unsigned int warmboot_secpage_count(void)
+{
+	return g_warmboot_secpages.count;
+}
+
+bool warmboot_secpage_get(unsigned int idx, phys_addr_t *phys, phys_addr_t *size)
+{
+	if (idx >= g_warmboot_secpages.count)
+		return false;
+	*phys = (phys_addr_t)g_warmboot_secpages.entries[idx].phys;
+	*size = (phys_addr_t)g_warmboot_secpages.entries[idx].size;
+	return true;
+}
+
+bool warmboot_secpage_overlaps(phys_addr_t start, phys_addr_t size)
+{
+	u64 end = (u64)start + (u64)size;
+	unsigned int i;
+
+	for (i = 0; i < g_warmboot_secpages.count; i++) {
+		u64 ep = g_warmboot_secpages.entries[i].phys;
+		u64 ee = ep + g_warmboot_secpages.entries[i].size;
+
+		if (end > ep && (u64)start < ee)
+			return true;
+	}
+	return false;
+}
+
+static void warmboot_secpage_track_locked(phys_addr_t phys, unsigned long size,
+					  pgprot_t prot)
+{
+	struct warmboot_secpage_table *pers;
+	unsigned int i;
+	bool is_restore = (pgprot_val(prot) == pgprot_val(PAGE_KERNEL));
+
+	if (is_restore) {
+		for (i = 0; i < g_warmboot_secpages.count; i++) {
+			if (g_warmboot_secpages.entries[i].phys == (u64)phys &&
+			    g_warmboot_secpages.entries[i].size == (u64)size) {
+				g_warmboot_secpages.count--;
+				g_warmboot_secpages.entries[i] =
+					g_warmboot_secpages.entries[g_warmboot_secpages.count];
+				break;
+			}
+		}
+	} else {
+		for (i = 0; i < g_warmboot_secpages.count; i++) {
+			if (g_warmboot_secpages.entries[i].phys == (u64)phys &&
+			    g_warmboot_secpages.entries[i].size == (u64)size)
+				return;
+		}
+		if (g_warmboot_secpages.count < WARMBOOT_SECPAGE_MAX) {
+			g_warmboot_secpages.entries[g_warmboot_secpages.count].phys = (u64)phys;
+			g_warmboot_secpages.entries[g_warmboot_secpages.count].size = (u64)size;
+			g_warmboot_secpages.count++;
+		}
+	}
+
+	pers = (struct warmboot_secpage_table *)__phys_to_virt(WARMBOOT_SECPAGE_PHYS);
+	memcpy(pers, &g_warmboot_secpages, sizeof(g_warmboot_secpages));
+	__flush_dcache_area(pers, PAGE_SIZE);
+}
+#endif
+
 /*
  * Set normal memory to device memory
  */
@@ -2644,6 +2763,7 @@ void change_secpage_range(phys_addr_t phys, unsigned long addr,
 	pgd_t *pgd;
 	unsigned long next;
 	unsigned long end = addr + size;
+	phys_addr_t orig_phys = phys;
 
 	if (WARN_ON(addr >= end))
 		return;
@@ -2660,6 +2780,9 @@ void change_secpage_range(phys_addr_t phys, unsigned long addr,
 		phys += next - addr;
 	} while (pgd++, addr = next, addr != end);
 
+#ifdef CONFIG_ARM64
+	warmboot_secpage_track_locked(orig_phys, size, prot);
+#endif
 	spin_unlock(&init_mm.page_table_lock);
 }
 
