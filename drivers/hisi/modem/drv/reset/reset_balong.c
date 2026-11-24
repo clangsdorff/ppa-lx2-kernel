@@ -72,7 +72,10 @@
 #include <bsp_llt_gcov.h>
 #include "../loadm/load_image.h"
 #include "reset_balong.h"
+#include <linux/hisi/hisi_warmboot.h>
 #include <securec.h>
+
+static bool g_warmboot_modem_was_off;
 /*lint --e{746, 732, 516, 958, 666} */
 static unsigned int scbakdata13_offset = 0;
 extern int bsp_sync_reset(SYNC_MODULE_E u32Module);
@@ -89,7 +92,7 @@ u32 modem_reset_fail_id_get(void)
 	return (u32)modem_reset_fail_id;
 }
 
-/* ´òµãinvokeµ÷ÓÃname */
+/* æ‰“ç‚¹invokeè°ƒç”¨name */
 static inline void cp_reset_invoke_dump(char *cb_name)
 {
     u32 slice;
@@ -132,7 +135,7 @@ s32 reset_prepare(enum MODEM_ACTION action)
 	}
 	else if (((u32)MODEM_NORMAL == global_action) ||(((u32)MODEM_POWER_OFF == global_action) && ((u32)MODEM_POWER_ON == current_action)))
 	{
-	    //¿É½øĞĞreset
+	    //å¯è¿›è¡Œreset
 	}
 	else
 	{
@@ -219,7 +222,7 @@ s32 drv_reset_cb (DRV_RESET_CB_MOMENT_E stage, int userdata)
 			(void)bsp_loadps_reset_cb(stage, 0);
 
 			ipc_modem_reset_cb(stage, 0);
-			/* ÔÚCºËdrvÆô¶¯Ö®ºó£¬iccĞèÒª×¼±¸ºÃ */
+			/* åœ¨Cæ ¸drvå¯åŠ¨ä¹‹åï¼Œiccéœ€è¦å‡†å¤‡å¥½ */
 			ccore_msg_switch_on(g_modem_reset_ctrl.multicore_msg_switch, CCORE_STATUS);
 
 			ret = bsp_rfile_reset_cb(stage, 0);
@@ -270,7 +273,7 @@ s32 invoke_reset_cb(DRV_RESET_CB_MOMENT_E stage)
 
 	reset_print_debug("(%d) @reset %d\n", ++g_reset_debug.main_stage, (u32)stage);
 
-	/*¸ù¾İ»Øµ÷º¯ÊıÓÅÏÈ¼¶£¬µ÷ÓÃ»Øµ÷º¯Êı*/
+	/*æ ¹æ®å›è°ƒå‡½æ•°ä¼˜å…ˆçº§ï¼Œè°ƒç”¨å›è°ƒå‡½æ•°*/
     while (NULL != p)
     {
         if (NULL != p->cb_info.cbfun)
@@ -297,11 +300,11 @@ s32 invoke_reset_cb(DRV_RESET_CB_MOMENT_E stage)
 s32 send_sync_msg_to_mcore(u32 reset_info, u32 *ack_val)
 {
 	s32 ret = 0;
-	/*Èç¹ûÊÇmodem´¦ÓÚ¸´Î»×´Ì¬£¬Ôòµ÷ÓÃAP²àIPC*/
+	/*å¦‚æœæ˜¯modemå¤„äºå¤ä½çŠ¶æ€ï¼Œåˆ™è°ƒç”¨APä¾§IPC*/
 	/*ap receive mabx 0,send mbx 13*/
 	rproc_msg_t tx_buffer[2] ;
 	rproc_msg_t ack_buffer[2] ;
-	/*·¢ËÍ±êÖ¾£¬ÓÃÓÚLPM3ÉÏ½ÓÊÕÊ±½âÎö*/
+	/*å‘é€æ ‡å¿—ï¼Œç”¨äºLPM3ä¸Šæ¥æ”¶æ—¶è§£æ*/
 	tx_buffer[0] = (0<<24|9<<16|3<<8);
 	tx_buffer[1] = reset_info;
 	ret = RPROC_SYNC_SEND(LPM3_RRPOC_ID, tx_buffer, 2, ack_buffer, 2);
@@ -336,7 +339,7 @@ s32 send_msg_to_hifi(DRV_RESET_CB_MOMENT_E stage)
 
 	if (MDRV_RESET_CB_BEFORE == stage)
 	{
-		/*ÏûÏ¢ID*/
+		/*æ¶ˆæ¯ID*/
         ret = bsp_reset_core_notify(BSP_HIFI, ID_AP_HIFI_CCPU_RESET_REQ, 5000, &val);
         switch(ret)
         {
@@ -367,7 +370,7 @@ s32 send_msg_to_hifi(DRV_RESET_CB_MOMENT_E stage)
         }
 	}
 
-	/* Èç¹ûÓĞ±ØÒª£¬ÆäËû½×¶ÎÒ²Í¨Öªhifi */
+	/* å¦‚æœæœ‰å¿…è¦ï¼Œå…¶ä»–é˜¶æ®µä¹Ÿé€šçŸ¥hifi */
 	cp_reset_timestamp_dump(RESET_DUMP_HIFI_END);
 	return ret;
 }
@@ -424,13 +427,13 @@ s32 do_power_off(u16 action)
 	s32 ret;
 	u32 ack_val = 0xff;
 
-	/* ÉèÖÃÆô¶¯Ä£Ê½ÎªCºËµ¥¶À¸´Î» */
+	/* è®¾ç½®å¯åŠ¨æ¨¡å¼ä¸ºCæ ¸å•ç‹¬å¤ä½ */
 	bsp_reset_bootflag_set(CCORE_IS_REBOOT);
 	g_modem_reset_ctrl.boot_mode = readl((volatile const void *)get_scbakdata13());
 	cp_reset_timestamp_dump(RESET_DUMP_POWER_OFF);
 	reset_print_debug("(%d) set boot mode:0x%x\n", ++g_reset_debug.main_stage, g_modem_reset_ctrl.boot_mode);
 
-	/* »½ĞÑccore */
+	/* å”¤é†’ccore */
     (void)bsp_sync_reset(SYNC_MODULE_RESET);
 	ret = bsp_ipc_int_send(IPC_CORE_CCORE, g_modem_reset_ctrl.ipc_send_irq_wakeup_ccore);
 	if(ret != 0)
@@ -438,7 +441,7 @@ s32 do_power_off(u16 action)
 		reset_print_err("wakeup ccore failt\n");
 	}
 
-	/* ¸´Î»Ç°¸÷×é¼ş»Øµ÷ */
+	/* å¤ä½å‰å„ç»„ä»¶å›è°ƒ */
 	cp_reset_timestamp_dump(RESET_DUMP_CB_BEFORE_START);
 	ret = invoke_reset_cb(MDRV_RESET_CB_BEFORE);
 	if(ret < 0)
@@ -448,7 +451,7 @@ s32 do_power_off(u16 action)
 	}
 	cp_reset_timestamp_dump(RESET_DUMP_CB_BEFORE_END);
 
-	/* ×èÖ¹ºË¼äÍ¨ĞÅ */
+	/* é˜»æ­¢æ ¸é—´é€šä¿¡ */
 	ccore_msg_switch_off(g_modem_reset_ctrl.multicore_msg_switch, CCORE_STATUS);
 
 	cp_reset_timestamp_dump(RESET_DUMP_SECCALL_OFF_START);
@@ -462,7 +465,7 @@ s32 do_power_off(u16 action)
 
 	reset_print_debug("(%d) switch off msg connect:%d\n", ++g_reset_debug.main_stage, g_modem_reset_ctrl.multicore_msg_switch);
 
-	/* Í¨ÖªhifiÍ£Ö¹Óëmodem½»»¥²¢µÈ´ıhifi´¦ÀíÍê³É */
+	/* é€šçŸ¥hifiåœæ­¢ä¸modemäº¤äº’å¹¶ç­‰å¾…hifiå¤„ç†å®Œæˆ */
 	ret = send_msg_to_hifi(MDRV_RESET_CB_BEFORE);
 	if(-1 == ret)
 	{
@@ -474,7 +477,7 @@ s32 do_power_off(u16 action)
 		reset_print_err("waiting wakeup reply from ccore timeout(%d)!\n", RESET_WAIT_CCORE_WAKEUP_REPLY_TIMEOUT);
 	}
 
-	/* Í¨Öªmodem master½øidleÌ¬,²¢µÈ´ıccore»Ø¸´ */
+	/* é€šçŸ¥modem masterè¿›idleæ€,å¹¶ç­‰å¾…ccoreå›å¤ */
 	if(BSP_OK != bsp_send_cp_fiq(FIQ_RESET))
 	{
 		reset_print_err("fiq trigger fail\n");
@@ -482,7 +485,7 @@ s32 do_power_off(u16 action)
 
 	ret = osl_sem_downtimeout(&(g_modem_reset_ctrl.wait_modem_master_in_idle_sem),
 		msecs_to_jiffies(RESET_WAIT_MODEM_IN_IDLE_TIMEOUT));/*lint !e713 */
-	/*µÈ´ıcºË¸²¸ÇÂÊÊı¾İÊÕ¼¯Íê³É*/
+	/*ç­‰å¾…cæ ¸è¦†ç›–ç‡æ•°æ®æ”¶é›†å®Œæˆ*/
 	gcov_ccore_save();
 	if (ret)
 	{
@@ -497,11 +500,11 @@ s32 do_power_off(u16 action)
 	ipc_modem_reset_cb(MDRV_RESET_CB_BEFORE, 0);
 	master_in_idle_timestamp_dump();
 
-	/* Í¨Öªm3½øĞĞ¸´Î»Ç°¸¨Öú´¦Àí */
+	/* é€šçŸ¥m3è¿›è¡Œå¤ä½å‰è¾…åŠ©å¤„ç† */
 	msg = RESET_INFO_MAKEUP(action, MDRV_RESET_CB_BEFORE); /*lint !e701 */
 
 
-	/* ¸´Î»½â¸´Î»modem×ÓÏµÍ³ */
+	/* å¤ä½è§£å¤ä½modemå­ç³»ç»Ÿ */
 	ret = send_sync_msg_to_mcore(msg, &ack_val);
 	if(ret)
 	{
@@ -540,8 +543,8 @@ s32 do_power_on(u16 action)
 		return RESET_ERROR;
 	}
 
-	/* CºËºÍdsp¾µÏñ¼ÓÔØ */
-	/* Èç³öÏÖ´íÎó£¬ÖØÊÔ3´Î£¬Ö±ÖÁÃ¿´Î¶¼´íÎó£¬Ôò¸´Î»ÏµÍ³ */
+	/* Cæ ¸å’Œdspé•œåƒåŠ è½½ */
+	/* å¦‚å‡ºç°é”™è¯¯ï¼Œé‡è¯•3æ¬¡ï¼Œç›´è‡³æ¯æ¬¡éƒ½é”™è¯¯ï¼Œåˆ™å¤ä½ç³»ç»Ÿ */
 	cp_reset_timestamp_dump(RESET_DUMP_LOAD_IMAGE_START);
 	for (i=0; i<RESET_RETRY_TIMES; i++)
 	{
@@ -559,7 +562,7 @@ s32 do_power_on(u16 action)
 	}
 	cp_reset_timestamp_dump(RESET_DUMP_LOAD_IMAGE_END);
 
-	/* Í¨Öªm3½øĞĞ¸´Î»ÖĞÏà¹Ø´¦Àí */
+	/* é€šçŸ¥m3è¿›è¡Œå¤ä½ä¸­ç›¸å…³å¤„ç† */
 	msg = RESET_INFO_MAKEUP(action, (u32)MDRV_RESET_RESETTING); /*lint !e701 */
 
 	ret = send_sync_msg_to_mcore(msg, &ack_val);
@@ -582,7 +585,7 @@ s32 do_power_on(u16 action)
 	cp_reset_timestamp_dump(RESET_DUMP_M3_ING_SUCCESS);
 	reset_print_debug("(%d) at reseting stage has communicated with lpm3 succeed\n", ++g_reset_debug.main_stage);
 
-	/* ¸´Î»ÖĞÏà¹Ø´¦Àí:ÓëCºËĞèÒª½»»¥µÄÄ£¿éÔÚ´Ë½×¶Î×¼±¸ºÃ */
+	/* å¤ä½ä¸­ç›¸å…³å¤„ç†:ä¸Cæ ¸éœ€è¦äº¤äº’çš„æ¨¡å—åœ¨æ­¤é˜¶æ®µå‡†å¤‡å¥½ */
 	if ((MODEM_POWER_ON == action) || (MODEM_RESET == action))
 	{
 		ccore_ipc_enable();
@@ -604,7 +607,7 @@ s32 do_power_on(u16 action)
 	}
 
 
-	/* ¸´Î»ºóÏà¹Ø´¦Àí */
+	/* å¤ä½åç›¸å…³å¤„ç† */
 	cp_reset_timestamp_dump(RESET_DUMP_CB_AFTER_START);
 	ret = invoke_reset_cb(MDRV_RESET_CB_AFTER);
 	if(ret < 0)
@@ -614,7 +617,7 @@ s32 do_power_on(u16 action)
 	}
 	cp_reset_timestamp_dump(RESET_DUMP_CB_AFTER_END);
 
-	/* ¸´Î»ºóÍ¨ÖªM3½øĞĞÏà¹Ø´¦Àí */
+	/* å¤ä½åé€šçŸ¥M3è¿›è¡Œç›¸å…³å¤„ç† */
 	msg = RESET_INFO_MAKEUP(action, MDRV_RESET_CB_AFTER); /*lint !e701 */
 
 	ret = send_sync_msg_to_mcore(msg, &ack_val);
@@ -637,7 +640,7 @@ s32 do_power_on(u16 action)
 	cp_reset_timestamp_dump(RESET_DUMP_M3_AFTER_SUCCESS);
 	reset_print_debug("(%d) after reset stage has communicated with lpm3 succeed\n", ++g_reset_debug.main_stage);
 
-	/* ½«Æô¶¯Ä£Ê½ÖÃ»ØÆÕÍ¨Ä£Ê½ */
+	/* å°†å¯åŠ¨æ¨¡å¼ç½®å›æ™®é€šæ¨¡å¼ */
 	bsp_reset_bootflag_set(CCORE_BOOT_NORMAL);
 
 	return RESET_OK;
@@ -722,7 +725,7 @@ struct reset_cb_list *sort_list_insert(struct reset_cb_list *list, struct reset_
     }
     while (NULL != curr)
     {
-        /* ÓÉĞ¡µ½´ó, °´ÓÅÏÈ¼¶²åÈë */
+        /* ç”±å°åˆ°å¤§, æŒ‰ä¼˜å…ˆçº§æ’å…¥ */
         if (curr->cb_info.priolevel > node->cb_info.priolevel)
         {
             if (head == curr)
@@ -797,7 +800,7 @@ void modem_reset_do_work(struct work_struct *work)
 	{
 		if (!wait_for_completion_timeout(&(g_modem_reset_ctrl.suspend_completion), HZ*10))
 		{
-			machine_restart("system halt"); /* µ÷systemError */
+			machine_restart("system halt"); /* è°ƒsystemError */
 			return;
 		}
 	}
@@ -811,7 +814,7 @@ void modem_power_off_do_work(struct work_struct *work)
 	{
 		if (!wait_for_completion_timeout(&(g_modem_reset_ctrl.suspend_completion), HZ*10))
 		{
-			machine_restart("system halt"); /* todo: ÊÇ·ñĞèÒªµ÷ÓÃsystem_error */
+			machine_restart("system halt"); /* todo: æ˜¯å¦éœ€è¦è°ƒç”¨system_error */
 			return;
 		}
 	}
@@ -1052,16 +1055,18 @@ int __init bsp_reset_init(void)
 	memset_s(&g_reset_debug, sizeof(struct modem_reset_debug), 0, sizeof(g_reset_debug));
 	g_reset_debug.print_sw = 1;
 
-	/* NV¿ØÖÆÊÇ·ñ´ò¿ªµ¥¶À¸´Î»¹¦ÄÜÒÔ¼°ÓëRILµÄ¶Ô½Ó */
+	/* NVæ§åˆ¶æ˜¯å¦æ‰“å¼€å•ç‹¬å¤ä½åŠŸèƒ½ä»¥åŠä¸RILçš„å¯¹æ¥ */
 	if(BSP_OK != bsp_nvm_read(NV_ID_DRV_CCORE_RESET, (u8*)&(g_modem_reset_ctrl.nv_config), sizeof(DRV_CCORE_RESET_STRU)))
 	{
 		reset_print_err("nv read fail, use default value\n");
 	}
 
 
+	g_warmboot_modem_was_off = (bsp_reset_ccore_is_reboot() != 0);
+
 	bsp_reset_bootflag_set(CCORE_BOOT_NORMAL);
 
-	/* ÖÃÉÏacoreÓëccoreÖ®¼äÍ¨ĞÅ×´Ì¬¿ÉÓÃ±êÊ¶ */
+	/* ç½®ä¸Šacoreä¸ccoreä¹‹é—´é€šä¿¡çŠ¶æ€å¯ç”¨æ ‡è¯† */
 	g_modem_reset_ctrl.multicore_msg_switch = 1;
 	g_modem_reset_ctrl.modem_action = MODEM_NORMAL;
 
@@ -1165,6 +1170,96 @@ int __init bsp_reset_init(void)
 
 	return 0;
 }
+
+int hisi_warmboot_modem_power_off(void)
+{
+	s32 ret;
+	u32 ack_val = 0xff;
+	u32 msg;
+
+	if (!g_modem_reset_ctrl.state)
+		return 0;
+
+	pr_warn("warmboot: powering off modem before jump\n");
+	ccore_ipc_disable();
+	ret = do_power_off(MODEM_POWER_OFF);
+	if (ret != RESET_OK) {
+		pr_warn("warmboot: do_power_off failed (%d), forcing LPM3 modem off\n",
+			ret);
+		bsp_reset_bootflag_set(CCORE_IS_REBOOT);
+		(void)bsp_sec_call(FUNC_ICC_MSG_SWITCH_OFF, 0);
+		(void)bsp_send_cp_fiq(FIQ_RESET);
+		msleep(50);
+		msg = RESET_INFO_MAKEUP(MODEM_POWER_OFF, MDRV_RESET_CB_BEFORE);
+		ret = send_sync_msg_to_mcore(msg, &ack_val);
+		pr_warn("warmboot: forced LPM3 modem off ret=%d ack=0x%x\n",
+			ret, ack_val);
+	} else {
+		pr_warn("warmboot: modem power_off succeeded\n");
+	}
+	return ret;
+}
+EXPORT_SYMBOL(hisi_warmboot_modem_power_off);
+
+int hisi_warmboot_modem_power_on(void)
+{
+	u32 msg;
+	u32 ack_val = 0xff;
+	s32 ret;
+
+	if (!g_modem_reset_ctrl.state)
+		return -1;
+
+	pr_warn("warmboot: powering on modem via LPM3 reset sequence (was_off=%d)\n",
+		g_warmboot_modem_was_off ? 1 : 0);
+	bsp_reset_bootflag_set(CCORE_IS_REBOOT);
+
+	if (!g_warmboot_modem_was_off) {
+		ccore_ipc_disable();
+		(void)bsp_sec_call(FUNC_ICC_MSG_SWITCH_OFF, 0);
+		(void)bsp_send_cp_fiq(FIQ_RESET);
+		msleep(50);
+		msg = RESET_INFO_MAKEUP(MODEM_POWER_OFF, MDRV_RESET_CB_BEFORE);
+		ret = send_sync_msg_to_mcore(msg, &ack_val);
+		pr_warn("warmboot: late LPM3 modem off ret=%d ack=0x%x\n",
+			ret, ack_val);
+	}
+
+	ret = icc_channel_reset(MDRV_RESET_RESETTING, 0);
+	if (ret != RESET_OK)
+		pr_warn("warmboot: icc_channel_reset ret=%d\n", ret);
+
+	ret = bsp_load_modem_images();
+	if (ret) {
+		pr_err("warmboot: bsp_load_modem_images failed: %d\n", ret);
+		bsp_reset_bootflag_set(CCORE_BOOT_NORMAL);
+		return ret;
+	}
+
+	msg = RESET_INFO_MAKEUP(MODEM_POWER_ON, (u32)MDRV_RESET_RESETTING);
+	ret = send_sync_msg_to_mcore(msg, &ack_val);
+	pr_warn("warmboot: lpm3 modem resetting ret=%d ack=0x%x\n", ret, ack_val);
+
+	ccore_ipc_enable();
+	ret = drv_reset_cb(MDRV_RESET_RESETTING, 0);
+	if (ret < 0)
+		pr_warn("warmboot: drv_reset_cb resetting ret=%d\n", ret);
+
+	ret = wait_for_ccore_reset_done(RESET_WAIT_CCPU_STARTUP_TIMEOUT);
+	pr_warn("warmboot: wait_for_ccore_reset_done ret=%d\n", ret);
+
+	ret = drv_reset_cb(MDRV_RESET_CB_AFTER, 0);
+	if (ret < 0)
+		pr_warn("warmboot: drv_reset_cb after ret=%d\n", ret);
+
+	msg = RESET_INFO_MAKEUP(MODEM_POWER_ON, MDRV_RESET_CB_AFTER);
+	ret = send_sync_msg_to_mcore(msg, &ack_val);
+	pr_warn("warmboot: lpm3 modem after ret=%d ack=0x%x\n", ret, ack_val);
+
+	bsp_reset_bootflag_set(CCORE_BOOT_NORMAL);
+	return 0;
+}
+EXPORT_SYMBOL(hisi_warmboot_modem_power_on);
 
 EXPORT_SYMBOL(bsp_cp_reset); /*lint !e19 */
 EXPORT_SYMBOL(bsp_reset_is_successful); /*lint !e19 */

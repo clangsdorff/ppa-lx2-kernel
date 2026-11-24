@@ -61,6 +61,8 @@
 #include <linux/jiffies.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
+#include <linux/of.h>
+#include <linux/hisi/hisi_warmboot.h>
 #include <product_config.h>
 
 #include <bsp_shared_ddr.h>
@@ -105,7 +107,7 @@ int modem_sysboot_start_init(void)
        }
     }
 
-    /*Èç¹ûÊÇrecovery downÄ£Ê½Ê±²»ÄÜ½â¸´Î»modem*/
+    /*å¦‚æœæ˜¯recovery downæ¨¡å¼æ—¶ä¸èƒ½è§£å¤ä½modem*/
     if(!bsp_need_loadmodem())
 	{
         bsp_err("upload or charge mode, will not start modem.\n");
@@ -144,6 +146,12 @@ int modem_sysboot_start_init(void)
     jiffies_new  = get_jiffies_64();
     jiffies_time = jiffies_new -jiffies_old;
     bsp_err("VOS_ModuleInit end tick 0x%llx\n",jiffies_time);
+    if (of_chosen && of_property_read_bool(of_chosen, "hisi,warmboot")) {
+        ret = hisi_warmboot_modem_power_on();
+        if (ret)
+            bsp_err("warmboot modem power on failed, ret=0x%x\n", ret);
+        return 0;
+    }
     bsp_err("bsp_load_modem_images \n");
     ret = bsp_load_modem_images();
     if (ret)
@@ -151,7 +159,7 @@ int modem_sysboot_start_init(void)
         bsp_err("%s his_load_image_start_up fail ",__func__);
     }
 
-    /*Ö»ÔÚMBBÆ½Ì¨ÉÏĞèÒª·¢ËÍ¸´Î»ÇëÇóÖĞ¶Ï*/
+    /*åªåœ¨MBBå¹³å°ä¸Šéœ€è¦å‘é€å¤ä½è¯·æ±‚ä¸­æ–­*/
     ret = bsp_load_notify_ccpu_start();
     if (ret)
     {
@@ -169,7 +177,7 @@ int modem_sysboot_start_init(void)
 static int modem_sysboot_wait_start(void *data)
 {
     bsp_err("%s in.\n", __func__);
-    /*´ËÈÎÎñµÈ´ı±»»½ĞÑ*/
+    /*æ­¤ä»»åŠ¡ç­‰å¾…è¢«å”¤é†’*/
     wait_for_completion(&modem_sysboot_start_complete);
 
     return modem_sysboot_start_init();
