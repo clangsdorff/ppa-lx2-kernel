@@ -1544,6 +1544,7 @@ static int get_session_root_key(void)
 		bk->magic = WARMBOOT_TEE_KEY_MAGIC;
 		(void)memcpy_s(&bk->key, sizeof(bk->key),
 			g_session_root_key, sizeof(*g_session_root_key));
+		__flush_dcache_area(bk, sizeof(*bk));
 	} else if (bk->magic == WARMBOOT_TEE_KEY_MAGIC) {
 		if (memcpy_s(g_session_root_key, sizeof(*g_session_root_key),
 			&bk->key, sizeof(*g_session_root_key))) {
@@ -1583,10 +1584,29 @@ int smc_init_data(struct device *class_dev)
 	if (class_dev == NULL || IS_ERR_OR_NULL(class_dev))
 		return -ENOMEM;
 #ifdef WARMBOOT_TEE_CMD_PHYS
-	g_cmd_data = (tc_ns_smc_queue *)__phys_to_virt(WARMBOOT_TEE_CMD_PHYS);
-	g_cmd_phys = WARMBOOT_TEE_CMD_PHYS;
-	if (memset_s(g_cmd_data, PAGE_SIZE, 0, PAGE_SIZE) != EOK)
-		return -EFAULT;
+	{
+		struct warmboot_tee_key_backup *bk =
+			(struct warmboot_tee_key_backup *)__phys_to_virt(WARMBOOT_TEE_KEY_PHYS);
+		bool is_warmboot = (bk->magic == WARMBOOT_TEE_KEY_MAGIC);
+
+		g_cmd_data = (tc_ns_smc_queue *)__phys_to_virt(WARMBOOT_TEE_CMD_PHYS);
+		g_cmd_phys = WARMBOOT_TEE_CMD_PHYS;
+		if (!is_warmboot) {
+			if (memset_s(g_cmd_data, PAGE_SIZE, 0, PAGE_SIZE) != EOK)
+				return -EFAULT;
+		} else {
+			memset((void *)g_cmd_data->in_bitmap, 0,
+			       sizeof(g_cmd_data->in_bitmap) +
+			       sizeof(g_cmd_data->doing_bitmap) +
+			       sizeof(g_cmd_data->out_bitmap) +
+			       sizeof(g_cmd_data->smc_lock));
+			memset((void *)g_cmd_data->in, 0,
+			       sizeof(g_cmd_data->in));
+			memset((void *)g_cmd_data->out, 0,
+			       sizeof(g_cmd_data->out));
+			__flush_dcache_area(g_cmd_data, PAGE_SIZE);
+		}
+	}
 #else
 	g_cmd_data = (tc_ns_smc_queue *)(uintptr_t)__get_free_page(
 		GFP_KERNEL | __GFP_ZERO);

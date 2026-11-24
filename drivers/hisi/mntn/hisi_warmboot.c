@@ -16,7 +16,6 @@
 #include <linux/zlib.h>
 #include <linux/libfdt.h>
 #include <linux/of_fdt.h>
-#include <linux/random.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
 #include <linux/reboot.h>
@@ -28,6 +27,10 @@
 #include <linux/mutex.h>
 #include <linux/string.h>
 #include <linux/hisi/hisi_warmboot.h>
+#ifdef CONFIG_HISI_BB
+#include <linux/hisi/rdr_pub.h>
+#include <linux/hisi/rdr_hisi_platform.h>
+#endif
 #include <asm/cacheflush.h>
 #include <asm/mmu_context.h>
 #include <soc_rtctimerwdt_interface.h>
@@ -523,8 +526,7 @@ static int warmboot_prepare_dtb(struct warmboot_seg *seg,
 {
 	size_t orig_sz, buf_sz, packed_sz, done = 0;
 	void *fdt;
-	int chosen, len = 0, ret;
-	u64 seed = 0;
+	int chosen, fb_node, len = 0, ret;
 
 	if (!initial_boot_params)
 		return -EINVAL;
@@ -552,14 +554,20 @@ static int warmboot_prepare_dtb(struct warmboot_seg *seg,
 					    WARMBOOT_RAMDISK_PHYS + ramdisk_size);
 		if (fdt_getprop(fdt, chosen, "kaslr-seed", &len) &&
 		    len == sizeof(u64)) {
-			__be64 v64;
+			__be64 v64 = 0;
 
-			get_random_bytes(&seed, sizeof(seed));
-			v64 = cpu_to_fdt64(seed);
 			fdt_setprop(fdt, chosen, "kaslr-seed", &v64,
 				    sizeof(v64));
 		}
 	}
+
+	/*
+	 * device_shutdown() powers off DSS before jumping, so the new kernel
+	 * must re-initialize display regulators/clocks instead of skipping init.
+	 */
+	fb_node = fdt_node_offset_by_compatible(fdt, -1, "hisilicon,hisifb");
+	if (fb_node >= 0)
+		fdt_setprop_u32(fdt, fb_node, "fastboot_enable_flag", 0);
 
 	fdt_pack(fdt);
 	packed_sz = fdt_totalsize(fdt);
@@ -587,7 +595,7 @@ static void warmboot_flush_staged(void)
 	u64 tramp_pa = page_to_phys(g_tramp_page);
 	int i;
 
-	descs = (struct warmboot_seg_desc *)((u8 *)tramp_va + 0x200);
+	descs = (struct warmboot_seg_desc *)((u8 *)tramp_va + 0x400);
 	memset(descs, 0, sizeof(*descs) * 4);
 
 	for (i = 0; i < 3; i++) {
@@ -663,7 +671,7 @@ int hisi_warmboot_prepare(const char *cmd)
 		goto err;
 
 	g_tramp_page = warmboot_alloc_safe_block(0, &rejects);
-	if (!g_tramp_page || hisi_warmboot_relocate_size > 0x200) {
+	if (!g_tramp_page || hisi_warmboot_relocate_size > 0x400) {
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -737,13 +745,21 @@ static void warmboot_quiesce_irqs_and_wdt(void)
 		: : : "memory");
 }
 
+void hisi_warmboot_save_dfx(void)
+{
+#ifdef CONFIG_HISI_BB
+	save_log_to_dfx_tempbuffer(AP_S_PRESS6S);
+#endif
+}
+
 void __noreturn hisi_warmboot_jump(void)
 {
 	u64 tramp_phys = page_to_phys(g_tramp_page);
 
 	local_irq_disable();
 	warmboot_quiesce_irqs_and_wdt();
-	cpu_soft_restart(0, tramp_phys, tramp_phys + 0x200,
+	flush_cache_all();
+	cpu_soft_restart(0, tramp_phys, tramp_phys + 0x400,
 			 WARMBOOT_DTB_PHYS, WARMBOOT_KERNEL_PHYS);
 	unreachable();
 }

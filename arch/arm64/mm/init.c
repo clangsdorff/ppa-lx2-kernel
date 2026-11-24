@@ -479,6 +479,7 @@ void __init arm64_memblock_init(void)
 	 */
 	memblock_reserve(__pa_symbol(_text), _end - _text);
 	memblock_reserve(0x0fffe000, 0x2000);
+	memblock_reserve(0xba800000, 0x00200000);
 #ifdef CONFIG_BLK_DEV_INITRD
 	if (initrd_start) {
 		memblock_reserve(initrd_start, initrd_end - initrd_start);

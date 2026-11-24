@@ -50,7 +50,28 @@ ENTRY(hisi_warmboot_relocate)
 
 	mov	x20, x13
 	mov	x21, x10
-	copy_page x20, x21, x0, x1, x2, x3, x4, x5, x6, x7
+	add	x9, x13, #PAGE_SIZE
+3:	ldp	x0, x1, [x21, #0]
+	ldp	x2, x3, [x21, #16]
+	ldp	x4, x5, [x21, #32]
+	ldp	x6, x7, [x21, #48]
+	add	x21, x21, #64
+	stp	x0, x1, [x20, #0]
+	stp	x2, x3, [x20, #16]
+	stp	x4, x5, [x20, #32]
+	stp	x6, x7, [x20, #48]
+	add	x20, x20, #64
+	cmp	x20, x9
+	b.lo	3b
+
+	mov	x0, x13
+	sub	x1, x15, #1
+	bic	x0, x0, x1
+4:	dc	civac, x0
+	add	x0, x0, x15
+	cmp	x0, x9
+	b.lo	4b
+	dsb	sy
 
 	add	x13, x13, #PAGE_SIZE
 	subs	x12, x12, #1
@@ -59,6 +80,7 @@ ENTRY(hisi_warmboot_relocate)
 
 .Ldone:
 	dsb	sy
+	ic	ialluis
 	ic	iallu
 	dsb	sy
 	isb

@@ -221,13 +221,25 @@ void migrate_to_reboot_cpu(void)
  */
 void kernel_restart(char *cmd)
 {
-	kernel_restart_prepare(cmd);
-	migrate_to_reboot_cpu();
 #ifdef CONFIG_HISI_POWER_OFF
-	if (hisi_warmboot_is_ready()) {
+	bool warm;
+
+	blocking_notifier_call_chain(&reboot_notifier_list, SYS_RESTART, cmd);
+	system_state = SYSTEM_RESTART;
+	usermodehelper_disable();
+	warm = hisi_warmboot_is_ready();
+	if (warm) {
+		hisi_warmboot_save_dfx();
+		migrate_to_reboot_cpu();
 		cpu_hotplug_enable();
 		disable_nonboot_cpus();
 	}
+	device_shutdown();
+	if (!warm)
+		migrate_to_reboot_cpu();
+#else
+	kernel_restart_prepare(cmd);
+	migrate_to_reboot_cpu();
 #endif
 	syscore_shutdown();
 	if (!cmd)
@@ -236,7 +248,7 @@ void kernel_restart(char *cmd)
 		pr_emerg("Restarting system with command '%s'\n", cmd);
 	kmsg_dump(KMSG_DUMP_RESTART);
 #ifdef CONFIG_HISI_POWER_OFF
-	if (hisi_warmboot_is_ready())
+	if (warm)
 		hisi_warmboot_jump();
 #endif
 	machine_restart(cmd);
@@ -333,7 +345,10 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	switch (cmd) {
 	case LINUX_REBOOT_CMD_RESTART:
 #ifdef CONFIG_HISI_SP805_WATCHDOG
-		watchdog_shutdown_oneshot(SHUTDOWN_TIMEOUT);
+#ifdef CONFIG_HISI_POWER_OFF
+		if (!hisi_warmboot_is_ready())
+#endif
+			watchdog_shutdown_oneshot(SHUTDOWN_TIMEOUT);
 #endif
 		kernel_restart(NULL);
 		break;
@@ -366,7 +381,10 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 			break;
 		}
 #ifdef CONFIG_HISI_SP805_WATCHDOG
-		watchdog_shutdown_oneshot(SHUTDOWN_TIMEOUT);
+#ifdef CONFIG_HISI_POWER_OFF
+		if (!hisi_warmboot_is_ready())
+#endif
+			watchdog_shutdown_oneshot(SHUTDOWN_TIMEOUT);
 #endif
 		buffer[sizeof(buffer) - 1] = '\0';
 
