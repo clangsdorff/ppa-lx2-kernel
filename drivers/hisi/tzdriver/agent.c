@@ -703,16 +703,16 @@ static void init_event_data_for_restart(tc_ns_dev_file *dev_file,
 
 static int alloc_and_init_event_data(tc_ns_dev_file *dev_file,
 	struct smc_event_data **event_data, unsigned int agent_id,
-	void **agent_buff, uint32_t agent_buff_size)
+	void **agent_buff, uint32_t agent_buff_size, bool *agent_reused)
 {
-	*agent_buff = mailbox_alloc(agent_buff_size, MB_FLAG_ZERO);
+	*agent_buff = mailbox_alloc_agent(agent_id, agent_buff_size,
+		agent_reused);
 	if (*agent_buff == NULL) {
 		tloge("alloc agent buff failed\n");
 		return -ENOMEM;
 	}
 	*event_data = kzalloc(sizeof(**event_data), GFP_KERNEL);
 	if (ZERO_OR_NULL_PTR((unsigned long)(uintptr_t)(*event_data))) {
-		mailbox_free(*agent_buff);
 		*agent_buff = NULL;
 		*event_data = NULL;
 		tloge("alloc event data failed\n");
@@ -871,6 +871,7 @@ int tc_ns_register_agent(tc_ns_dev_file *dev_file, unsigned int agent_id,
 	struct smc_event_data *event_data = NULL;
 	int ret = TEEC_ERROR_GENERIC;
 	bool find_flag = false;
+	bool agent_reused = false;
 	void *agent_buff = NULL;
 	uint32_t size_align;
 
@@ -887,7 +888,7 @@ int tc_ns_register_agent(tc_ns_dev_file *dev_file, unsigned int agent_id,
 		init_event_data_for_restart(dev_file, event_data);
 	} else {
 		ret = alloc_and_init_event_data(dev_file, &event_data,
-			agent_id, &agent_buff, size_align);
+			agent_id, &agent_buff, size_align, &agent_reused);
 		if (ret != TEEC_SUCCESS)
 			return ret;
 	}
@@ -910,11 +911,16 @@ int tc_ns_register_agent(tc_ns_dev_file *dev_file, unsigned int agent_id,
 
 	/* find_flag is false means it's a new agent register */
 	if (find_flag == false) {
-		/* Obtain share memory which is released in tc_ns_unregister_agent */
-		ret = register_agent_to_tee(agent_id, agent_buff, size_align);
-		if (ret != TEEC_SUCCESS) {
-			unmap_agent_buffer(event_data);
-			goto release_rsrc;
+		if (smc_is_warmboot() && agent_reused) {
+			tlogi("warmboot: reusing pre-registered agent 0x%x\n",
+				agent_id);
+		} else {
+			/* Obtain share memory which is released in tc_ns_unregister_agent */
+			ret = register_agent_to_tee(agent_id, agent_buff, size_align);
+			if (ret != TEEC_SUCCESS) {
+				unmap_agent_buffer(event_data);
+				goto release_rsrc;
+			}
 		}
 		add_event_node_to_list(event_data);
 	}

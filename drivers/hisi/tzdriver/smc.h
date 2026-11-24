@@ -45,7 +45,17 @@ struct pending_entry {
 extern struct session_crypto_info *g_session_root_key;
 extern unsigned long g_secs_suspend_status;
 
+#define WARMBOOT_TEE_MBOX_PHYS       0x0f800000ULL
+#define WARMBOOT_TEE_NOTIFY_PHYS     0x0fffd000ULL
+#define WARMBOOT_TEE_CMD_PHYS        0x0fffe000ULL
+#define WARMBOOT_TEE_KEY_PHYS        0x0ffff000ULL
+#define WARMBOOT_TEE_KEY_MAGIC       0x5445454bU
+#define WARMBOOT_TEE_AGENT_META_OFF  SZ_2M
+#define WARMBOOT_TEE_AGENT_MAGIC     0x5441474dU
+#define WARMBOOT_TEE_AGENT_MAX       32
+
 int sigkill_pending(struct task_struct *tsk);
+bool smc_is_warmboot(void);
 int smc_init_data(struct device *class_dev);
 void smc_free_data(void);
 int tc_ns_smc(tc_ns_smc_cmd *cmd);

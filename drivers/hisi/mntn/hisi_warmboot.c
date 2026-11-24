@@ -50,7 +50,9 @@ extern void mntn_print_to_ramconsole(const char *fmt, ...);
 #define WARMBOOT_DTB_PHYS		0xba800000ULL
 #define WARMBOOT_DTB_MAX		0x00200000ULL
 
-#define WARMBOOT_TEE_RESV_START		0x0fffe000ULL
+#define WARMBOOT_TEE_MBOX_START		0x0f800000ULL
+#define WARMBOOT_TEE_MBOX_END		0x0fc00000ULL
+#define WARMBOOT_TEE_RESV_START		0x0fffd000ULL
 #define WARMBOOT_TEE_RESV_END		0x10000000ULL
 
 #define PART_RAMDISK			21
@@ -118,6 +120,8 @@ static bool warmboot_range_excluded(u64 start, u64 size)
 	u64 end = start + size;
 
 	if (start < WARMBOOT_KERNEL_SAFE_END)
+		return true;
+	if (end > WARMBOOT_TEE_MBOX_START && start < WARMBOOT_TEE_MBOX_END)
 		return true;
 	if (end > WARMBOOT_TEE_RESV_START && start < WARMBOOT_TEE_RESV_END)
 		return true;

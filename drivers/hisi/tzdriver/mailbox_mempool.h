@@ -40,6 +40,7 @@ struct mb_cmd_pack {
 };
 
 void *mailbox_alloc(size_t size, unsigned int flag);
+void *mailbox_alloc_agent(unsigned int agent_id, size_t size, bool *reused);
 void mailbox_free(const void *ptr);
 int mailbox_mempool_init(void);
 void mailbox_mempool_destroy(void);

@@ -542,20 +542,20 @@ int tz_spi_init(struct device *class_dev, struct device_node *np)
 	INIT_LIST_HEAD(&g_ta_callback_func_list.callback_list);
 	mutex_init(&g_ta_callback_func_list.callback_list_lock);
 	if (g_notify_data == NULL) {
-		g_notify_data = (struct notify_data_struct *)(uintptr_t)__get_free_page(
-			GFP_KERNEL | __GFP_ZERO);
-		if (g_notify_data == NULL) {
-			tloge("__get_free_page failed for notification data\n");
-			ret = -ENOMEM;
-			goto clean;
-		}
+		g_notify_data = (struct notify_data_struct *)__phys_to_virt(
+			WARMBOOT_TEE_NOTIFY_PHYS);
+		if (!smc_is_warmboot())
+			memset(g_notify_data, 0, PAGE_SIZE);
 		ret = tc_ns_register_notify_data_memery();
 		if (ret != TEEC_SUCCESS) {
-			tloge("Shared memory failed ret is 0x%x\n", ret);
-			ret = -EFAULT;
-			free_page((unsigned long)(uintptr_t)g_notify_data);
-			g_notify_data = NULL;
-			goto clean;
+			if (!smc_is_warmboot()) {
+				tloge("Shared memory failed ret is 0x%x\n", ret);
+				ret = -EFAULT;
+				g_notify_data = NULL;
+				goto clean;
+			}
+			tlogw("warmboot: reusing pre-registered notify page\n");
+			ret = TEEC_SUCCESS;
 		}
 		g_notify_data_entry_timer =
 			&g_notify_data->entry[NOTIFY_DATA_ENTRY_TIMER - 1];
@@ -578,7 +578,6 @@ void tz_spi_exit(void)
 {
 	if (g_notify_data != NULL) {
 		tc_ns_unregister_notify_data_memory();
-		free_page((unsigned long)(uintptr_t)g_notify_data);
 		g_notify_data = NULL;
 	}
 #ifdef CONFIG_TEE_SMP

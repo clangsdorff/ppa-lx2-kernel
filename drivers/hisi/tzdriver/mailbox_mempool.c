@@ -25,6 +25,7 @@
 #include <linux/mutex.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
+#include <asm/cacheflush.h>
 #include <securec.h>
 
 #if (KERNEL_VERSION(4, 14, 0) <= LINUX_VERSION_CODE)
@@ -35,8 +36,9 @@
 #include "tc_ns_log.h"
 #include "smc.h"
 
-#define MAILBOX_PAGE_MAX (MAILBOX_POOL_SIZE >> PAGE_SHIFT)
-#define MAILBOX_ORDER_MAX (ilog2(MAILBOX_POOL_SIZE - 1) - PAGE_SHIFT + 1)
+#define MAILBOX_BUDDY_SIZE SZ_2M
+#define MAILBOX_PAGE_MAX (MAILBOX_BUDDY_SIZE >> PAGE_SHIFT)
+#define MAILBOX_ORDER_MAX (ilog2(MAILBOX_BUDDY_SIZE - 1) - PAGE_SHIFT + 1)
 
 struct mb_page_t {
 	struct list_head node;
@@ -493,6 +495,94 @@ free_smc_cmd:
 	return ret;
 }
 
+struct warmboot_agent_slot {
+	uint32_t agent_id;
+	uint32_t offset;
+	uint32_t size;
+};
+
+struct warmboot_agent_table {
+	uint32_t magic;
+	uint32_t count;
+	uint32_t next_off;
+	uint32_t reserved;
+	struct warmboot_agent_slot slots[WARMBOOT_TEE_AGENT_MAX];
+};
+
+void *mailbox_alloc_agent(unsigned int agent_id, size_t size, bool *reused)
+{
+	struct warmboot_agent_table *tbl;
+	size_t size_align = ALIGN(size, SZ_4K);
+	uint32_t i;
+	void *ptr = NULL;
+
+	if (reused != NULL)
+		*reused = false;
+	if (size == 0 || size_align > (SZ_2M - PAGE_SIZE)) {
+		tloge("invalid agent alloc size %zu\n", size);
+		return NULL;
+	}
+
+	tbl = (struct warmboot_agent_table *)__phys_to_virt(
+		WARMBOOT_TEE_MBOX_PHYS + WARMBOOT_TEE_AGENT_META_OFF);
+
+	mutex_lock(&mb_lock);
+	if (tbl->magic != WARMBOOT_TEE_AGENT_MAGIC ||
+		tbl->count > WARMBOOT_TEE_AGENT_MAX ||
+		tbl->next_off < PAGE_SIZE || tbl->next_off > SZ_2M) {
+		if (memset_s(tbl, PAGE_SIZE, 0, PAGE_SIZE) != EOK) {
+			mutex_unlock(&mb_lock);
+			return NULL;
+		}
+		tbl->magic = WARMBOOT_TEE_AGENT_MAGIC;
+		tbl->count = 0;
+		tbl->next_off = PAGE_SIZE;
+	}
+
+	for (i = 0; i < tbl->count; i++) {
+		if (tbl->slots[i].agent_id == agent_id) {
+			if (tbl->slots[i].size < size_align) {
+				tloge("agent 0x%x size mismatch: %u < %zu\n",
+					agent_id, tbl->slots[i].size, size_align);
+				mutex_unlock(&mb_lock);
+				return NULL;
+			}
+			ptr = __phys_to_virt(WARMBOOT_TEE_MBOX_PHYS +
+				WARMBOOT_TEE_AGENT_META_OFF + tbl->slots[i].offset);
+			if (memset_s(ptr, size_align, 0, size_align) != EOK) {
+				mutex_unlock(&mb_lock);
+				return NULL;
+			}
+			if (reused != NULL)
+				*reused = true;
+			mutex_unlock(&mb_lock);
+			return ptr;
+		}
+	}
+
+	if (tbl->count >= WARMBOOT_TEE_AGENT_MAX ||
+		tbl->next_off + size_align > SZ_2M) {
+		tloge("agent mempool full (count=%u next=%u need=%zu)\n",
+			tbl->count, tbl->next_off, size_align);
+		mutex_unlock(&mb_lock);
+		return NULL;
+	}
+
+	tbl->slots[tbl->count].agent_id = agent_id;
+	tbl->slots[tbl->count].offset = tbl->next_off;
+	tbl->slots[tbl->count].size = (uint32_t)size_align;
+	ptr = __phys_to_virt(WARMBOOT_TEE_MBOX_PHYS +
+		WARMBOOT_TEE_AGENT_META_OFF + tbl->next_off);
+	tbl->next_off += (uint32_t)size_align;
+	tbl->count++;
+	__flush_dcache_area(tbl, PAGE_SIZE);
+	mutex_unlock(&mb_lock);
+
+	if (memset_s(ptr, size_align, 0, size_align) != EOK)
+		return NULL;
+	return ptr;
+}
+
 int mailbox_mempool_init(void)
 {
 	int i;
@@ -500,15 +590,14 @@ int mailbox_mempool_init(void)
 	struct mb_free_area_t *area = NULL;
 	struct page *all_pages = NULL;
 
-	all_pages = alloc_pages(GFP_KERNEL, MAILBOX_ORDER_MAX);
-	if (all_pages == NULL) {
-		tloge("fail to alloc mailbox mempool\n");
-		return -ENOMEM;
-	}
+	all_pages = virt_to_page((uint64_t)(uintptr_t)__phys_to_virt(
+		WARMBOOT_TEE_MBOX_PHYS));
 	if (mailbox_register(page_address(all_pages), MAILBOX_POOL_SIZE)) {
-		tloge("register mailbox failed\n");
-		free_pages((unsigned long)(uintptr_t)all_pages, MAILBOX_ORDER_MAX);
-		return -EIO;
+		if (!smc_is_warmboot()) {
+			tloge("register mailbox failed\n");
+			return -EIO;
+		}
+		tlogw("mailbox_register failed on warmboot, reusing pre-registered pool\n");
 	}
 	for (i = 0; i < MAILBOX_PAGE_MAX; i++) {
 		m_zone.pages[i].order = -1;
@@ -535,6 +624,5 @@ int mailbox_mempool_init(void)
 
 void mailbox_mempool_destroy(void)
 {
-	__free_pages(m_zone.all_pages, MAILBOX_ORDER_MAX);
 	m_zone.all_pages = NULL;
 }

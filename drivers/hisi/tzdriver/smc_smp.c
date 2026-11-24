@@ -1485,9 +1485,13 @@ static int smc_init_secondary_cpus(void)
 
 #ifdef SECURITY_AUTH_ENHANCE
 #define ALIGN_BIT  0x3
-#define WARMBOOT_TEE_CMD_PHYS  0x0fffe000ULL
-#define WARMBOOT_TEE_KEY_PHYS  0x0ffff000ULL
-#define WARMBOOT_TEE_KEY_MAGIC 0x5445454bU
+
+static bool g_smc_warmboot;
+
+bool smc_is_warmboot(void)
+{
+	return g_smc_warmboot;
+}
 
 struct warmboot_tee_key_backup {
 	uint32_t magic;
@@ -1589,11 +1593,18 @@ int smc_init_data(struct device *class_dev)
 			(struct warmboot_tee_key_backup *)__phys_to_virt(WARMBOOT_TEE_KEY_PHYS);
 		bool is_warmboot = (bk->magic == WARMBOOT_TEE_KEY_MAGIC);
 
+		g_smc_warmboot = is_warmboot;
 		g_cmd_data = (tc_ns_smc_queue *)__phys_to_virt(WARMBOOT_TEE_CMD_PHYS);
 		g_cmd_phys = WARMBOOT_TEE_CMD_PHYS;
 		if (!is_warmboot) {
+			void *agent_meta = __phys_to_virt(
+				WARMBOOT_TEE_MBOX_PHYS + WARMBOOT_TEE_AGENT_META_OFF);
+
 			if (memset_s(g_cmd_data, PAGE_SIZE, 0, PAGE_SIZE) != EOK)
 				return -EFAULT;
+			if (memset_s(agent_meta, PAGE_SIZE, 0, PAGE_SIZE) != EOK)
+				return -EFAULT;
+			__flush_dcache_area(agent_meta, PAGE_SIZE);
 		} else {
 			memset((void *)g_cmd_data->in_bitmap, 0,
 			       sizeof(g_cmd_data->in_bitmap) +
