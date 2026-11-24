@@ -2457,10 +2457,13 @@ static int focal_after_resume(void *feature_info)
 				time_duration.tv_sec * 1000000 + time_duration.tv_usec);
 
 	}
+	if ((g_focal_pdata->chip_id >> 8) & 0xff)
+		chipid_high = (g_focal_pdata->chip_id >> 8) & 0xff;
 	for(i=0;i<FTS_RESUME_MAX_TIMES;i++)
 	{
+		reg_val = 0;
 		ret = focal_read(&cmd, 1, &reg_val, 1);
-		if ((reg_val  == chipid_high) || (reg_val  == FTS_FT86XX_HIGH)) {
+		if (!ret && ((reg_val  == chipid_high) || (reg_val  == FTS_FT86XX_HIGH))) {
 			TS_LOG_INFO("%s:chip id read success, chip id:0x%X, i=%d\n",
 				AFTER_RESUME, reg_val, i);
 			break;
