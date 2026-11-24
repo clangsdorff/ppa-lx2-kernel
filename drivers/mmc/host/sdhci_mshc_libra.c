@@ -71,11 +71,26 @@ void sdhci_mshc_hardware_reset(struct sdhci_host *host)
 void sdhci_mshc_hardware_disreset(struct sdhci_host *host)
 {
 	int count = 0;
+	u32 reg_val;
+	u32 pwr_cnt = 0;
 
 	if (!host->sysctrl) {
 		pr_err("%s: sysctrl is null, can't reset mmc!\n", __func__);
 		return;
 	}
+
+	/* ensure controller and phy power is on and unisolated */
+	sdhci_mmc_sys_writel(host, PHY_MTCMOS_EN | CTRL_MTCMOS_EN,
+		EMMC_SYS_MTCMOS_EN);
+	do {
+		if (pwr_cnt++ > 1000) {
+			pr_err("eMMC wait power on timeout\n");
+			break;
+		}
+		udelay(1);
+		reg_val = sdhci_mmc_sys_readl(host, EMMC_SYS_MTCMOS_ACK);
+	} while (!((reg_val & PHY_MTCMOS_ACK) && (reg_val & CTRL_MTCMOS_ACK)));
+	sdhci_mmc_sys_writel(host, 0, EMMC_SYS_PHY_ISOEN);
 
 	/* phy dis-reset */
 	sdhci_mmc_sys_writel(host, IP_PRST_EMMC_PHY | IP_PRST_EMMC_PHY_MASK,
@@ -93,12 +108,17 @@ void sdhci_mshc_hardware_disreset(struct sdhci_host *host)
 		}
 		count++;
 	}
+
+	/* enable phy, cq, hclk clock */
+	sdhci_mmc_sys_writel(host, EMMC_SYS_GT_CLK_MASK | EMMC_SYS_GT_CLK,
+		EMMC_SYS_CRG_CFG1);
 }
 
 void sdhci_combo_phy_init(struct sdhci_host *host)
 {
 	u32 reg_val;
 
+	sdhci_mmc_sys_writel(host, 0, EMMC_SYS_LHEN_IN);
 	reg_val = sdhci_mmc_sys_readl(host, EMMC_SYS_LHEN_INB);
 	reg_val |= INB_IO_LATCH_MODE;
 	sdhci_mmc_sys_writel(host, reg_val, EMMC_SYS_LHEN_INB);

@@ -592,12 +592,11 @@ int mailbox_mempool_init(void)
 
 	all_pages = virt_to_page((uint64_t)(uintptr_t)__phys_to_virt(
 		WARMBOOT_TEE_MBOX_PHYS));
-	if (mailbox_register(page_address(all_pages), MAILBOX_POOL_SIZE)) {
-		if (!smc_is_warmboot()) {
-			tloge("register mailbox failed\n");
-			return -EIO;
-		}
-		tlogw("mailbox_register failed on warmboot, reusing pre-registered pool\n");
+	if (smc_is_warmboot()) {
+		tlogi("warmboot: reusing pre-registered mailbox pool\n");
+	} else if (mailbox_register(page_address(all_pages), MAILBOX_POOL_SIZE)) {
+		tloge("register mailbox failed\n");
+		return -EIO;
 	}
 	for (i = 0; i < MAILBOX_PAGE_MAX; i++) {
 		m_zone.pages[i].order = -1;

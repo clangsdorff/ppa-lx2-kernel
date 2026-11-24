@@ -566,6 +566,7 @@ static int warmboot_prepare_dtb(struct warmboot_seg *seg,
 
 	chosen = fdt_path_offset(fdt, "/chosen");
 	if (chosen >= 0) {
+		fdt_setprop_u32(fdt, chosen, "hisi,warmboot", 1);
 		warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-start",
 					    WARMBOOT_RAMDISK_PHYS);
 		warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-end",

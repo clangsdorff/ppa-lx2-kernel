@@ -544,18 +544,17 @@ int tz_spi_init(struct device *class_dev, struct device_node *np)
 	if (g_notify_data == NULL) {
 		g_notify_data = (struct notify_data_struct *)__phys_to_virt(
 			WARMBOOT_TEE_NOTIFY_PHYS);
-		if (!smc_is_warmboot())
+		if (smc_is_warmboot()) {
+			tlogi("warmboot: reusing pre-registered notify page\n");
+		} else {
 			memset(g_notify_data, 0, PAGE_SIZE);
-		ret = tc_ns_register_notify_data_memery();
-		if (ret != TEEC_SUCCESS) {
-			if (!smc_is_warmboot()) {
+			ret = tc_ns_register_notify_data_memery();
+			if (ret != TEEC_SUCCESS) {
 				tloge("Shared memory failed ret is 0x%x\n", ret);
 				ret = -EFAULT;
 				g_notify_data = NULL;
 				goto clean;
 			}
-			tlogw("warmboot: reusing pre-registered notify page\n");
-			ret = TEEC_SUCCESS;
 		}
 		g_notify_data_entry_timer =
 			&g_notify_data->entry[NOTIFY_DATA_ENTRY_TIMER - 1];

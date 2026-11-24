@@ -39,6 +39,7 @@
 #include <linux/bitops.h>
 #include <linux/version.h>
 #include <linux/cpumask.h>
+#include <linux/of.h>
 #ifdef SECURITY_AUTH_ENHANCE
 #include <linux/crc32.h>
 #include <linux/hisi/secs_power_ctrl.h>
@@ -1366,6 +1367,10 @@ static int smc_svc_thread_fn(void *arg)
 		ret = smp_smc_send_func(&smc_cmd,
 			TC_NS_CMD_TYPE_NS_TO_SECURE, false);
 		tlogd("smc svc return 0x%x\n", ret);
+		if (smc_is_warmboot() && ret == TEE_ERROR_AUDIT_FAIL) {
+			tlogw("smc_svc_thread: audit fail on warmboot, exiting\n");
+			break;
+		}
 	}
 	tloge("smc_svc_thread stop ...\n");
 	return 0;
@@ -1591,7 +1596,9 @@ int smc_init_data(struct device *class_dev)
 	{
 		struct warmboot_tee_key_backup *bk =
 			(struct warmboot_tee_key_backup *)__phys_to_virt(WARMBOOT_TEE_KEY_PHYS);
-		bool is_warmboot = (bk->magic == WARMBOOT_TEE_KEY_MAGIC);
+		bool is_warmboot = of_chosen &&
+			of_property_read_bool(of_chosen, "hisi,warmboot") &&
+			(bk->magic == WARMBOOT_TEE_KEY_MAGIC);
 
 		g_smc_warmboot = is_warmboot;
 		g_cmd_data = (tc_ns_smc_queue *)__phys_to_virt(WARMBOOT_TEE_CMD_PHYS);
@@ -1600,6 +1607,8 @@ int smc_init_data(struct device *class_dev)
 			void *agent_meta = __phys_to_virt(
 				WARMBOOT_TEE_MBOX_PHYS + WARMBOOT_TEE_AGENT_META_OFF);
 
+			bk->magic = 0;
+			__flush_dcache_area(bk, sizeof(*bk));
 			if (memset_s(g_cmd_data, PAGE_SIZE, 0, PAGE_SIZE) != EOK)
 				return -EFAULT;
 			if (memset_s(agent_meta, PAGE_SIZE, 0, PAGE_SIZE) != EOK)
