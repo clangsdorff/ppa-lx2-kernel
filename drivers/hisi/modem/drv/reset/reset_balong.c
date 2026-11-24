@@ -1221,9 +1221,9 @@ int hisi_warmboot_modem_power_on(void)
 	pr_err("warmboot: powering on modem via LPM3 reset sequence (was_off=%d)\n",
 		g_warmboot_modem_was_off ? 1 : 0);
 	bsp_reset_bootflag_set(CCORE_IS_REBOOT);
+	ccore_ipc_disable();
 
 	if (!g_warmboot_modem_was_off) {
-		ccore_ipc_disable();
 		(void)bsp_sec_call(FUNC_ICC_MSG_SWITCH_OFF, 0);
 		(void)bsp_send_cp_fiq(FIQ_RESET);
 		msleep(50);
