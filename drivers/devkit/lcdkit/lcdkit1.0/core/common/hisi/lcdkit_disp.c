@@ -4064,7 +4064,8 @@ static int __init lcdkit_probe(struct platform_device* pdev)
 			lcdkit_info.panel_infos.host_info_all_in_ddic)
 			lcdkit_read_panel_sncode(hisi_pdev);
 	} else if (lcdkit_info.panel_infos.is_hostprocessing &&
-		   lcdkit_info.panel_infos.host_info_all_in_ddic) {
+		   lcdkit_info.panel_infos.host_info_all_in_ddic &&
+		   of_chosen && of_property_read_bool(of_chosen, "hisi,warmboot")) {
 		const char *wb_pid = NULL;
 
 		if (of_chosen &&
