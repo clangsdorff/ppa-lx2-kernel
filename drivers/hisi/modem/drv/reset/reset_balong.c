@@ -49,6 +49,8 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/kthread.h>
+#include <linux/kref.h>
+#include <linux/completion.h>
 #include <linux/slab.h>
 #include <linux/reboot.h>
 #include <linux/delay.h>
@@ -1185,7 +1187,7 @@ void hisi_warmboot_modem_mark_started(void)
 	g_warmboot_ccpu_started = true;
 }
 
-int hisi_warmboot_modem_power_off(void)
+static int warmboot_modem_power_off_inner(void)
 {
 	unsigned long flags;
 	bool busy = false;
@@ -1231,6 +1233,62 @@ int hisi_warmboot_modem_power_off(void)
 	} else {
 		pr_err("warmboot: modem power_off succeeded\n");
 	}
+	return ret;
+}
+
+struct warmboot_modem_off_ctx {
+	struct kref ref;
+	struct completion done;
+	int ret;
+};
+
+static void warmboot_modem_off_ctx_release(struct kref *ref)
+{
+	kfree(container_of(ref, struct warmboot_modem_off_ctx, ref));
+}
+
+static int warmboot_modem_off_thread(void *data)
+{
+	struct warmboot_modem_off_ctx *ctx = data;
+
+	ctx->ret = warmboot_modem_power_off_inner();
+	complete(&ctx->done);
+	kref_put(&ctx->ref, warmboot_modem_off_ctx_release);
+	return 0;
+}
+
+#define WARMBOOT_MODEM_OFF_DEADLINE_MS 8000
+
+int hisi_warmboot_modem_power_off(void)
+{
+	struct warmboot_modem_off_ctx *ctx;
+	struct task_struct *task;
+	int ret;
+
+	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
+	if (ctx == NULL)
+		return -ENOMEM;
+	kref_init(&ctx->ref);
+	kref_get(&ctx->ref);
+	init_completion(&ctx->done);
+	task = kthread_create(warmboot_modem_off_thread, ctx, "modem_wb_off");
+	if (IS_ERR(task)) {
+		pr_err("warmboot: modem power off thread create failed\n");
+		kfree(ctx);
+		return PTR_ERR(task);
+	}
+	/* keep the worker on the reboot cpu so disable_nonboot_cpus never has to move it */
+	if (cpu_online(reboot_cpu))
+		kthread_bind(task, reboot_cpu);
+	wake_up_process(task);
+	if (!wait_for_completion_timeout(&ctx->done,
+		msecs_to_jiffies(WARMBOOT_MODEM_OFF_DEADLINE_MS))) {
+		pr_err("warmboot: modem power off timed out, jumping anyway\n");
+		kref_put(&ctx->ref, warmboot_modem_off_ctx_release);
+		return -ETIMEDOUT;
+	}
+	ret = ctx->ret;
+	kref_put(&ctx->ref, warmboot_modem_off_ctx_release);
 	return ret;
 }
 
