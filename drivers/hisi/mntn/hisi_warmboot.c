@@ -107,10 +107,13 @@ static char g_boot_path[256] = "mmcblk0p47";
 static int g_warmboot_armed;
 static int g_warmboot_ready;
 
-#define WARMBOOT_AUTO_ARM_MAX_TRIES	30
+#define WARMBOOT_AUTO_ARM_FAST_TRIES	30
 #define WARMBOOT_AUTO_ARM_DELAY_JIFFIES	(2 * HZ)
+#define WARMBOOT_AUTO_ARM_SLOW_JIFFIES	(30 * HZ)
+#define WARMBOOT_AUTO_ARM_LOG_EVERY	20
 
 static int g_warmboot_user_disarmed;
+static int g_warmboot_committed;
 static int g_warmboot_auto_tries;
 static void warmboot_auto_arm_work_fn(struct work_struct *work);
 static DECLARE_DELAYED_WORK(g_warmboot_auto_work, warmboot_auto_arm_work_fn);
@@ -669,14 +672,45 @@ bool hisi_warmboot_is_ready(void)
 	return g_warmboot_ready != 0;
 }
 
+static bool warmboot_restarting(void)
+{
+	return system_state == SYSTEM_RESTART ||
+	       system_state == SYSTEM_POWER_OFF ||
+	       system_state == SYSTEM_HALT;
+}
+
 void hisi_warmboot_disarm(void)
 {
 	g_warmboot_user_disarmed = 1;
 	cancel_delayed_work(&g_warmboot_auto_work);
 	mutex_lock(&g_warmboot_lock);
-	g_warmboot_armed = 0;
-	warmboot_free_all();
+	if (!g_warmboot_committed) {
+		g_warmboot_armed = 0;
+		warmboot_free_all();
+	}
 	mutex_unlock(&g_warmboot_lock);
+}
+
+/* Called from kernel_restart before irqs go off; after success nobody can free the staged image. */
+bool hisi_warmboot_commit(const char *cmd)
+{
+	bool ok;
+
+	if (!g_warmboot_ready && !g_warmboot_user_disarmed &&
+	    (!cmd || (strcmp(cmd, "bootrom") && strcmp(cmd, "vcom")))) {
+		cancel_delayed_work_sync(&g_warmboot_auto_work);
+		if (!g_warmboot_user_disarmed) {
+			pr_err("warmboot: not ready at reboot, staging now\n");
+			hisi_warmboot_prepare("warm");
+		}
+	}
+
+	mutex_lock(&g_warmboot_lock);
+	ok = g_warmboot_ready && g_tramp_page;
+	if (ok)
+		g_warmboot_committed = 1;
+	mutex_unlock(&g_warmboot_lock);
+	return ok;
 }
 
 int hisi_warmboot_prepare(const char *cmd)
@@ -687,6 +721,11 @@ int hisi_warmboot_prepare(const char *cmd)
 	int ret;
 
 	mutex_lock(&g_warmboot_lock);
+
+	if (g_warmboot_committed) {
+		mutex_unlock(&g_warmboot_lock);
+		return -EBUSY;
+	}
 
 	if (cmd && !strcmp(cmd, "recovery"))
 		rd_part = PART_RECOVERY_RAMDISK;
@@ -882,9 +921,15 @@ out_unmap:
 		iounmap(peri_crg);
 }
 
-void __noreturn hisi_warmboot_jump(void)
+void hisi_warmboot_jump(void)
 {
-	u64 tramp_phys = page_to_phys(g_tramp_page);
+	u64 tramp_phys;
+
+	if (!g_warmboot_ready || !g_tramp_page) {
+		pr_err("warmboot: staged image gone, not jumping\n");
+		return;
+	}
+	tramp_phys = page_to_phys(g_tramp_page);
 
 	warmboot_powerup_media1_crg();
 #ifdef CONFIG_HISI_BB
@@ -917,13 +962,16 @@ static void warmboot_auto_arm_work_fn(struct work_struct *work)
 		return;
 	}
 
-	if (++g_warmboot_auto_tries < WARMBOOT_AUTO_ARM_MAX_TRIES &&
-	    !g_warmboot_user_disarmed)
-		schedule_delayed_work(&g_warmboot_auto_work,
-				      WARMBOOT_AUTO_ARM_DELAY_JIFFIES);
-	else
-		pr_err("warmboot: auto-arm gave up after %d tries (last=%d)\n",
+	g_warmboot_auto_tries++;
+	if (g_warmboot_auto_tries == WARMBOOT_AUTO_ARM_FAST_TRIES ||
+	    !(g_warmboot_auto_tries % WARMBOOT_AUTO_ARM_LOG_EVERY))
+		pr_err("warmboot: auto-arm still failing after %d tries (last=%d)\n",
 		       g_warmboot_auto_tries, ret);
+	if (!g_warmboot_user_disarmed)
+		schedule_delayed_work(&g_warmboot_auto_work,
+				      g_warmboot_auto_tries < WARMBOOT_AUTO_ARM_FAST_TRIES ?
+				      WARMBOOT_AUTO_ARM_DELAY_JIFFIES :
+				      WARMBOOT_AUTO_ARM_SLOW_JIFFIES);
 }
 
 static ssize_t warm_reboot_show(struct kobject *kobj,
@@ -942,6 +990,9 @@ static ssize_t warm_reboot_store(struct kobject *kobj,
 {
 	int ret;
 
+	if (warmboot_restarting() || g_warmboot_committed)
+		return -EBUSY;
+
 	if (!strncmp(buf, "boot=", 5)) {
 		size_t len = count - 5;
 
@@ -951,6 +1002,10 @@ static ssize_t warm_reboot_store(struct kobject *kobj,
 		if (!len || len >= sizeof(g_boot_path))
 			return -EINVAL;
 		mutex_lock(&g_warmboot_lock);
+		if (g_warmboot_committed) {
+			mutex_unlock(&g_warmboot_lock);
+			return -EBUSY;
+		}
 		memcpy(g_boot_path, buf + 5, len);
 		g_boot_path[len] = '\0';
 		warmboot_free_all();
@@ -970,8 +1025,10 @@ static ssize_t warm_reboot_store(struct kobject *kobj,
 		g_warmboot_user_disarmed = 1;
 		cancel_delayed_work(&g_warmboot_auto_work);
 		mutex_lock(&g_warmboot_lock);
-		g_warmboot_armed = 0;
-		warmboot_free_all();
+		if (!g_warmboot_committed) {
+			g_warmboot_armed = 0;
+			warmboot_free_all();
+		}
 		mutex_unlock(&g_warmboot_lock);
 		return count;
 	}

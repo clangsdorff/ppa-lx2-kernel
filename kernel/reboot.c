@@ -227,7 +227,7 @@ void kernel_restart(char *cmd)
 	blocking_notifier_call_chain(&reboot_notifier_list, SYS_RESTART, cmd);
 	system_state = SYSTEM_RESTART;
 	usermodehelper_disable();
-	warm = hisi_warmboot_is_ready();
+	warm = hisi_warmboot_commit(cmd);
 	if (warm) {
 		hisi_warmboot_tzdriver_close_sessions();
 		hisi_warmboot_modem_power_off();
@@ -235,6 +235,11 @@ void kernel_restart(char *cmd)
 		migrate_to_reboot_cpu();
 		cpu_hotplug_enable();
 		disable_nonboot_cpus();
+		if (num_online_cpus() != 1) {
+			pr_err("warmboot: cpus still online: %*pbl, retrying\n",
+			       cpumask_pr_args(cpu_online_mask));
+			disable_nonboot_cpus();
+		}
 	}
 	device_shutdown();
 	if (!warm)

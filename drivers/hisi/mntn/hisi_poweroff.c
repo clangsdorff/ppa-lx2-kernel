@@ -160,7 +160,10 @@ static int hisi_bootrom_reboot_notify(struct notifier_block *nb,
 		hisi_invalidate_boot0_xloader();
 	} else if (cmd && (!strcmp(cmd, "warm") ||
 			   (!strcmp(cmd, "recovery") && hisi_warmboot_is_ready()))) {
-		hisi_warmboot_prepare(cmd);
+		if (hisi_warmboot_prepare(cmd) && !strcmp(cmd, "recovery")) {
+			pr_err("hisi_poweroff: recovery stage failed, staging normal warm boot\n");
+			hisi_warmboot_prepare("warm");
+		}
 	}
 	return NOTIFY_DONE;
 }
