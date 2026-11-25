@@ -1358,10 +1358,6 @@ clean:
 
 static int smc_svc_thread_fn(void *arg)
 {
-	if (smc_is_warmboot()) {
-		tloge("warmboot: skipping SET_SERVE_CMD (already active in TEE)\n");
-		return 0;
-	}
 	while (!kthread_should_stop()) {
 		tc_ns_smc_cmd smc_cmd = { {0}, 0 };
 		int ret;
@@ -1621,7 +1617,8 @@ int smc_init_data(struct device *class_dev)
 		} else {
 			unsigned long busy_mask =
 				g_cmd_data->doing_bitmap[0] &
-				~g_cmd_data->out_bitmap[0];
+				~g_cmd_data->out_bitmap[0] &
+				GENMASK(MAX_SMC_CMD - 1, 0);
 
 			memset((void *)g_cmd_data->in_bitmap, 0,
 			       sizeof(g_cmd_data->in_bitmap) +
@@ -1712,6 +1709,10 @@ free_mem:
 
 int init_smc_svc_thread(void)
 {
+	if (smc_is_warmboot()) {
+		tloge("warmboot: SET_SERVE_CMD already active in TEE, no svc thread\n");
+		return 0;
+	}
 	g_smc_svc_thread = kthread_create(smc_svc_thread_fn, NULL,
 		"smc_svc_thread");
 	if (unlikely(IS_ERR_OR_NULL(g_smc_svc_thread))) {
