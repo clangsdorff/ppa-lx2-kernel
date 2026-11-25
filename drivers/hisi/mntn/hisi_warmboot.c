@@ -570,7 +570,9 @@ static int warmboot_prepare_dtb(struct warmboot_seg *seg,
 
 	chosen = fdt_path_offset(fdt, "/chosen");
 	if (chosen >= 0) {
-		fdt_setprop_u32(fdt, chosen, "hisi,warmboot", 1);
+		ret = fdt_setprop_u32(fdt, chosen, "hisi,warmboot", 1);
+		if (ret)
+			pr_err("warmboot: set hisi,warmboot failed: %d\n", ret);
 #ifdef CONFIG_LCDKIT_DRIVER
 		{
 			char lcd_pid[24] = {0};
@@ -578,16 +580,23 @@ static int warmboot_prepare_dtb(struct warmboot_seg *seg,
 			if (!hostprocessing_get_project_id(lcd_pid) &&
 			    lcd_pid[0] >= 0x20 && lcd_pid[0] < 0x7f) {
 				lcd_pid[sizeof(lcd_pid) - 1] = '\0';
-				fdt_setprop_string(fdt, chosen,
-						   "hisi,lcd_project_id",
-						   lcd_pid);
+				ret = fdt_setprop_string(fdt, chosen,
+							 "hisi,lcd_project_id",
+							 lcd_pid);
+				if (ret)
+					pr_err("warmboot: set hisi,lcd_project_id failed: %d\n",
+					       ret);
 			}
 		}
 #endif
-		warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-start",
-					    WARMBOOT_RAMDISK_PHYS);
-		warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-end",
-					    WARMBOOT_RAMDISK_PHYS + ramdisk_size);
+		ret = warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-start",
+						  WARMBOOT_RAMDISK_PHYS);
+		if (ret)
+			pr_err("warmboot: set initrd-start failed: %d\n", ret);
+		ret = warmboot_fdt_set_u32_or_u64(fdt, chosen, "linux,initrd-end",
+						  WARMBOOT_RAMDISK_PHYS + ramdisk_size);
+		if (ret)
+			pr_err("warmboot: set initrd-end failed: %d\n", ret);
 		if (fdt_getprop(fdt, chosen, "kaslr-seed", &len) &&
 		    len == sizeof(u64)) {
 			__be64 v64 = 0;
