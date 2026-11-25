@@ -448,8 +448,11 @@ int bsp_get_init_status(void)
     return g_ipf_ctx.status->init_ok;    
 }
 
-void mdrv_ipf_reinit_dlreg(void)
+int mdrv_ipf_reinit_dlreg(void)
 {	
+	if (!g_ipf_ctx.desc || !g_ipf_ctx.status)
+		return -ENODEV;
+
 	g_ipf_ctx.desc->config();
 	
 #ifdef CONFIG_PSAM
@@ -459,7 +462,7 @@ void mdrv_ipf_reinit_dlreg(void)
     g_ipf_ctx.status->init_ok = IPF_ACORE_INIT_SUCCESS;
     bsp_err("ipf dl register reinit success\n");
 
-    return;
+    return 0;
 
 }
 #ifndef CONFIG_PSAM

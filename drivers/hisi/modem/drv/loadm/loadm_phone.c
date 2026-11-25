@@ -69,6 +69,7 @@
 #include <bsp_hardtimer.h>
 #include <bsp_version.h>
 #include <bsp_nvim.h>
+#include <bsp_reset.h>
 #include <securec.h>
 #include "load_image.h"
 #include <bsp_print.h>
@@ -148,9 +149,9 @@ int modem_sysboot_start_init(void)
     bsp_err("VOS_ModuleInit end tick 0x%llx\n",jiffies_time);
     if (of_chosen && of_property_read_bool(of_chosen, "hisi,warmboot")) {
         ret = hisi_warmboot_modem_power_on();
-        if (ret)
-            bsp_err("warmboot modem power on failed, ret=0x%x\n", ret);
-        return 0;
+        if (!ret)
+            return 0;
+        bsp_err("warmboot modem power on failed, ret=0x%x, cold boot modem\n", ret);
     }
     bsp_err("bsp_load_modem_images \n");
     ret = bsp_load_modem_images();
@@ -168,6 +169,7 @@ int modem_sysboot_start_init(void)
     else
     {
         bsp_err("send ipc to unreset ccore succeed\n");
+        hisi_warmboot_modem_mark_started();
     }
 
     return 0;

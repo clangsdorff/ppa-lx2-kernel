@@ -223,6 +223,7 @@ static inline u32 bsp_reset_ccore_is_reboot(void)
 int bsp_register_master_idle(BSP_MASTER_IDLE_E type, MASTER_IDLE_HOOK_FUNC master_idle);
 
 u32 bsp_reset_is_successful(u32 timeout_ms);
+void hisi_warmboot_modem_mark_started(void);
 
 #else /* !CONFIG_BALONG_MODEM_RESET */
 
@@ -239,6 +240,8 @@ static inline int bsp_register_master_idle(BSP_MASTER_IDLE_E type, MASTER_IDLE_H
 static inline u32 bsp_reset_is_successful(u32 timeout_ms) {
     return 1;
 }
+
+static inline void hisi_warmboot_modem_mark_started(void) {}
 static inline u32 modem_reset_fail_id_get(void){
     return 0;
 }

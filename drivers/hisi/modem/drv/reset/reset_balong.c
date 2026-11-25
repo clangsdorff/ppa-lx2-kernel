@@ -76,6 +76,7 @@
 #include <securec.h>
 
 static bool g_warmboot_modem_was_off;
+static bool g_warmboot_ccpu_started;
 /*lint --e{746, 732, 516, 958, 666} */
 static unsigned int scbakdata13_offset = 0;
 extern int bsp_sync_reset(SYNC_MODULE_E u32Module);
@@ -1173,14 +1174,21 @@ int __init bsp_reset_init(void)
 
 #ifdef CONFIG_IPF_SUPPORT
 extern int reset_ipf_psam_from_sys(void);
-extern void mdrv_ipf_reinit_dlreg(void);
+extern int mdrv_ipf_reinit_dlreg(void);
 #else
 static inline int reset_ipf_psam_from_sys(void) { return 0; }
-static inline void mdrv_ipf_reinit_dlreg(void) {}
+static inline int mdrv_ipf_reinit_dlreg(void) { return 0; }
 #endif
+
+void hisi_warmboot_modem_mark_started(void)
+{
+	g_warmboot_ccpu_started = true;
+}
 
 int hisi_warmboot_modem_power_off(void)
 {
+	unsigned long flags;
+	bool busy = false;
 	s32 ret;
 	u32 ack_val = 0xff;
 	u32 msg;
@@ -1188,9 +1196,27 @@ int hisi_warmboot_modem_power_off(void)
 	if (!g_modem_reset_ctrl.state)
 		return 0;
 
+	spin_lock_irqsave(&g_modem_reset_ctrl.action_lock, flags);
+	if (!g_warmboot_ccpu_started) {
+		spin_unlock_irqrestore(&g_modem_reset_ctrl.action_lock, flags);
+		pr_err("warmboot: modem was never started, skip power off\n");
+		return 0;
+	}
+	if (g_modem_reset_ctrl.modem_action == MODEM_NORMAL)
+		g_modem_reset_ctrl.modem_action = MODEM_POWER_OFF;
+	else
+		busy = true;
+	spin_unlock_irqrestore(&g_modem_reset_ctrl.action_lock, flags);
+
 	pr_err("warmboot: powering off modem before jump\n");
 	ccore_ipc_disable();
-	ret = do_power_off(MODEM_POWER_OFF);
+	if (busy) {
+		pr_err("warmboot: modem action %d in flight, forcing LPM3 modem off\n",
+			g_modem_reset_ctrl.modem_action);
+		ret = RESET_ERROR;
+	} else {
+		ret = do_power_off(MODEM_POWER_OFF);
+	}
 	if (ret != RESET_OK) {
 		pr_err("warmboot: do_power_off failed (%d), forcing LPM3 modem off\n",
 			ret);
@@ -1207,7 +1233,6 @@ int hisi_warmboot_modem_power_off(void)
 	}
 	return ret;
 }
-EXPORT_SYMBOL(hisi_warmboot_modem_power_off);
 
 int hisi_warmboot_modem_power_on(void)
 {
@@ -1238,7 +1263,11 @@ int hisi_warmboot_modem_power_on(void)
 
 	ret = reset_ipf_psam_from_sys();
 	pr_err("warmboot: reset_ipf_psam_from_sys ret=%d\n", ret);
-	mdrv_ipf_reinit_dlreg();
+	if (!ret) {
+		ret = mdrv_ipf_reinit_dlreg();
+		if (ret)
+			pr_err("warmboot: ipf reinit_dlreg ret=%d\n", ret);
+	}
 
 	ret = icc_channel_reset(MDRV_RESET_RESETTING, 0);
 	if (ret != RESET_OK)
@@ -1248,11 +1277,14 @@ int hisi_warmboot_modem_power_on(void)
 	if (ret) {
 		pr_err("warmboot: bsp_load_modem_images failed: %d\n", ret);
 		bsp_reset_bootflag_set(CCORE_BOOT_NORMAL);
+		ccore_ipc_enable();
 		return ret;
 	}
 
 	msg = RESET_INFO_MAKEUP(MODEM_POWER_ON, (u32)MDRV_RESET_RESETTING);
 	ret = send_sync_msg_to_mcore(msg, &ack_val);
+	if (!ret)
+		g_warmboot_ccpu_started = true;
 	pr_err("warmboot: lpm3 modem resetting ret=%d ack=0x%x\n", ret, ack_val);
 
 	ccore_ipc_enable();
@@ -1273,7 +1305,6 @@ int hisi_warmboot_modem_power_on(void)
 	bsp_reset_bootflag_set(CCORE_BOOT_NORMAL);
 	return 0;
 }
-EXPORT_SYMBOL(hisi_warmboot_modem_power_on);
 
 EXPORT_SYMBOL(bsp_cp_reset); /*lint !e19 */
 EXPORT_SYMBOL(bsp_reset_is_successful); /*lint !e19 */

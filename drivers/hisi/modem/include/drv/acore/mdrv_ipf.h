@@ -240,7 +240,7 @@ int mdrv_ipf_get_dlad_num (unsigned int* pu32AD0Num, unsigned int* pu32AD1Num);
 * 其它说明  :
 *
 *****************************************************************************/
-void mdrv_ipf_reinit_dlreg(void);
+int mdrv_ipf_reinit_dlreg(void);
 
 /*****************************************************************************
 * 函 数 名  : mdrv_ipf_get_used_dlad
@@ -300,9 +300,9 @@ static inline int mdrv_ipf_get_dlad_num (unsigned int* pu32AD0Num, unsigned int*
     return 0;
 }
 
-static inline void mdrv_ipf_reinit_dlreg(void)
+static inline int mdrv_ipf_reinit_dlreg(void)
 {
-    return;
+    return 0;
 }
 
 static inline int mdrv_ipf_get_used_dlad(IPF_AD_TYPE_E eAdType, unsigned int * pu32AdNum, IPF_AD_DESC_S * pstAdDesc)
