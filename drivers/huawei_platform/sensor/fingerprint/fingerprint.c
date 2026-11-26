@@ -614,8 +614,12 @@ extern int mcu_spi_rw(u8 bus_num, union fp_spi_ctrl ctrl, u8 *tx,
 #define SIL_SPI_MAX_XFER	2048
 #define SIL_SPI_MAX_WR		120
 #define SIL_SPI_MAX_MSGS	16
+/* the blob drops WAKELOCK after every command, so its release only arms a grace timer */
+#define SIL_WS_IRQ_MS		1000
+#define SIL_WS_GRACE_MS		500
 
 static DEFINE_MUTEX(sil_lock);
+static struct wakeup_source sil_ws;
 static DEFINE_SPINLOCK(sil_q_lock);
 static DECLARE_WAIT_QUEUE_HEAD(sil_wq);
 static u8 sil_q[SIL_MSG_QLEN];
@@ -632,7 +636,8 @@ static u32 sil_spi_speed = 8000000;
 static u32 sil_spi_mode32;
 static u8 sil_dbg_level;
 
-static int sil_rd_chunk = 32;
+/* bulk reads stream across CS changes (first byte of each CS is junk); 68 B per CS proven */
+static int sil_rd_chunk = 64;
 module_param(sil_rd_chunk, int, 0644);
 static int sil_hdr3_prime = 1;
 module_param(sil_hdr3_prime, int, 0644);
@@ -907,7 +912,7 @@ static int sil_spi_xfer(struct fp_data *fp, u8 *tx, u8 *rx, u32 len)
 		hdr_tx = 2;
 	}
 
-	chunk = clamp(sil_rd_chunk, 1, 128);
+	chunk = clamp(sil_rd_chunk, 1, SIL_FW_RX_MAX);
 	dlen = len - hdr;
 	{
 		ktime_t t0 = ktime_get();
@@ -1065,7 +1070,7 @@ static int sil_hw_step1(struct fp_data *fp, int *cs_req, int *irq_val)
 	*cs_req = -1;
 	*irq_val = -1;
 	fingerprint_sensor_poweron(fp, FP_LDO_TYPE_EXTERN);
-	msleep(5);
+	usleep_range(5000, 5500);
 	if (gpio_is_valid(fp->cs0_gpio)) {
 		*cs_req = gpio_request(fp->cs0_gpio, "fp_probe_cs");
 		gpio_direction_output(fp->cs0_gpio, 1);
@@ -1074,9 +1079,9 @@ static int sil_hw_step1(struct fp_data *fp, int *cs_req, int *irq_val)
 	}
 	if (gpio_is_valid(fp->rst_gpio)) {
 		gpio_direction_output(fp->rst_gpio, 0);
-		msleep(5);
+		usleep_range(5000, 5500);
 		gpio_direction_output(fp->rst_gpio, 1);
-		msleep(10);
+		usleep_range(10000, 11000);
 	}
 	if (gpio_is_valid(fp->irq_gpio))
 		*irq_val = gpio_get_value(fp->irq_gpio);
@@ -1305,8 +1310,10 @@ static irqreturn_t fingerprint_irq_handler(int irq, void *handle)
 			return IRQ_HANDLED;
 	}
 
-	if (READ_ONCE(sil_inited) && gpio_get_value(fp->irq_gpio))
+	if (READ_ONCE(sil_inited) && gpio_get_value(fp->irq_gpio)) {
+		__pm_wakeup_event(&sil_ws, SIL_WS_IRQ_MS);
 		sil_queue_msg(SIL_MSG_IRQ);
+	}
 	sysfs_notify(&fp->pf_dev->dev.kobj, NULL,
 		dev_attr_irq.attr.name);
 	return IRQ_HANDLED;
@@ -2400,9 +2407,9 @@ static long sil_ioctl(struct file *file, struct fp_data *fp,
 		if (!v8)
 			v8 = 5;
 		gpio_direction_output(fp->rst_gpio, 0);
-		msleep(v8);
+		usleep_range(v8 * 1000, v8 * 1000 + 500);
 		gpio_direction_output(fp->rst_gpio, 1);
-		msleep(v8);
+		usleep_range(v8 * 1000, v8 * 1000 + 500);
 		sil_first_read = false;
 		sil_fw_state = SIL_FW_IDLE;
 		break;
@@ -2441,9 +2448,9 @@ static long sil_ioctl(struct file *file, struct fp_data *fp,
 		if (ret)
 			break;
 		if (v8)
-			__pm_stay_awake(&fp->ttw_wl);
+			__pm_stay_awake(&sil_ws);
 		else
-			__pm_relax(&fp->ttw_wl);
+			__pm_wakeup_event(&sil_ws, SIL_WS_GRACE_MS);
 		break;
 	case SIFP_IOC_ACQ_SPI:
 	case SIFP_IOC_RLS_SPI:
@@ -3179,6 +3186,7 @@ static int fingerprint_device_init(struct fp_data *fp, struct device *dev)
 
 	device_init_wakeup(dev, true);
 	wakeup_source_init(&fp->ttw_wl, "fpc_ttw_wl");
+	wakeup_source_init(&sil_ws, "silead_fp");
 	init_waitqueue_head(&fp->hbm_queue);
 	mutex_init(&fp->lock);
 
@@ -3405,6 +3413,7 @@ static int fingerprint_remove(struct platform_device *pdev)
 	input_free_device(fp->input_dev);
 	mutex_destroy(&fp->lock);
 	wakeup_source_trash(&fp->ttw_wl);
+	wakeup_source_trash(&sil_ws);
 	devm_kfree(&pdev->dev, fp);
 	hwlog_info("%s\n", __func__);
 	return FP_RETURN_SUCCESS;
