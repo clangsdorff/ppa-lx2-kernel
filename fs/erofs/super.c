@@ -751,8 +751,8 @@ static int erofs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	buf->f_blocks = sbi->blocks;
 	buf->f_bfree = buf->f_bavail = 0;
 
-	buf->f_files = ULLONG_MAX;
-	buf->f_ffree = ULLONG_MAX - sbi->inos;
+	buf->f_files = sbi->inos;
+	buf->f_ffree = 0;
 
 	buf->f_namelen = EROFS_NAME_LEN;
 
