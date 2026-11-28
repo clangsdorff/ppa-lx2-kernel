@@ -423,6 +423,13 @@ NM		= $(CROSS_COMPILE)nm
 STRIP		= $(CROSS_COMPILE)strip
 OBJCOPY		= $(CROSS_COMPILE)objcopy
 OBJDUMP		= $(CROSS_COMPILE)objdump
+ifeq ($(LLVM),1)
+AR		= llvm-ar
+NM		= llvm-nm
+STRIP		= llvm-strip
+OBJCOPY		= llvm-objcopy
+OBJDUMP		= llvm-objdump
+endif
 AWK		= awk
 GENKSYMS	= scripts/genksyms/genksyms
 INSTALLKERNEL  := installkernel
@@ -548,7 +555,7 @@ ifneq ($(KBUILD_SRC),)
 endif
 
 ifeq ($(cc-name),clang)
-ifneq ($(CROSS_COMPILE),)
+ifneq ($(CROSS_COMPILE)$(LLVM),)
 CLANG_TRIPLE	?= aarch64-linux-gnu-
 CLANG_FLAGS	:= --target=$(notdir $(CLANG_TRIPLE:%-=%))
 GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)ld 2>/dev/null || which $(CROSS_COMPILE)as 2>/dev/null))
@@ -560,7 +567,9 @@ endif
 ifneq ($(GCC_TOOLCHAIN),)
 CLANG_FLAGS	+= --gcc-toolchain=$(GCC_TOOLCHAIN)
 endif
+ifneq ($(LLVM_IAS),1)
 CLANG_FLAGS	+= -no-integrated-as
+endif
 CLANG_FLAGS	+= -Werror=unknown-warning-option
 KBUILD_CFLAGS	+= $(CLANG_FLAGS)
 KBUILD_AFLAGS	+= $(CLANG_FLAGS)
@@ -714,13 +723,13 @@ export CFLAGS_GCOV CFLAGS_KCOV
 # Make toolchain changes before including arch/$(SRCARCH)/Makefile to ensure
 # ar/cc/ld-* macros return correct values.
 ifeq ($(ld-name),lld)
-LDFINAL_vmlinux ?= $(if $(shell which $(CROSS_COMPILE)ld 2>/dev/null),$(CROSS_COMPILE)ld,$(LD))
+LDFINAL_vmlinux ?= $(if $(and $(CROSS_COMPILE),$(shell which $(CROSS_COMPILE)ld 2>/dev/null)),$(CROSS_COMPILE)ld,$(LD))
 export LDFINAL_vmlinux
 endif
 
 ifdef CONFIG_LTO_CLANG
 ifeq ($(ld-name),lld)
-LDFINAL_vmlinux ?= $(if $(shell which $(CROSS_COMPILE)ld 2>/dev/null),$(CROSS_COMPILE)ld,$(LD))
+LDFINAL_vmlinux ?= $(if $(and $(CROSS_COMPILE),$(shell which $(CROSS_COMPILE)ld 2>/dev/null)),$(CROSS_COMPILE)ld,$(LD))
 ifdef CONFIG_THINLTO
 LDFLAGS		+= -mllvm -import-instr-limit=5
 endif
