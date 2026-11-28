@@ -395,10 +395,14 @@ CLANG_PREBUILTS_PATH ?= $(srctree)/../../prebuilts/cfi_clang/linux-x86/cfi_clang
 else
 CLANG_PREBUILTS_PATH ?= $(srctree)/../../prebuilts/clang/host/linux-x86/clang-r353983c/
 endif
+ifneq ($(wildcard $(CLANG_PREBUILTS_PATH)bin/clang),)
 CLANG_PREBUILT_BIN := $(CLANG_PREBUILTS_PATH)bin/
+else
+CLANG_PREBUILT_BIN :=
+endif
 
-HOSTCC       = $(CLANG_PREBUILT_BIN)clang
-HOSTCXX      = $(CLANG_PREBUILT_BIN)clang++
+HOSTCC       ?= $(CLANG_PREBUILT_BIN)clang
+HOSTCXX      ?= $(CLANG_PREBUILT_BIN)clang++
 HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 \
 		-fomit-frame-pointer -std=gnu89 $(HOST_LFS_CFLAGS)
 HOSTCXXFLAGS := -O2 $(HOST_LFS_CFLAGS)
