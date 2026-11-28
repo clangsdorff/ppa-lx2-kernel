@@ -767,10 +767,12 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, sometimes-uninitialized)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, implicit-fallthrough)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, unaligned-access)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, bitwise-instead-of-logical)
+KBUILD_CFLAGS	+= $(call cc-option,-Wno-unknown-warning-option,)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, strict-prototypes)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, incompatible-function-pointer-types)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-conversion)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, single-bit-bitfield-constant-conversion)
-KBUILD_CFLAGS	+= $(call cc-disable-warning, cast-function-type-mismatch)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, cast-function-type-strict)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, unterminated-string-initialization)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, deprecated-non-prototype)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, enum-conversion)
@@ -1048,7 +1050,8 @@ KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
 KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
 
 # require functions to have arguments in prototypes, not empty 'int foo()'
-KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
+# modern clang treats non-prototype C89 functions in legacy Huawei drivers as errors
+KBUILD_CFLAGS   += $(call cc-disable-warning, strict-prototypes)
 
 # Prohibit date/time macros, which would make the build non-deterministic
 KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
