@@ -547,9 +547,11 @@ ifeq ($(cc-name),clang)
 ifneq ($(CROSS_COMPILE),)
 CLANG_TRIPLE	?= aarch64-linux-gnu-
 CLANG_FLAGS	:= --target=$(notdir $(CLANG_TRIPLE:%-=%))
-GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)ld))
+GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)ld 2>/dev/null || which $(CROSS_COMPILE)as 2>/dev/null))
+ifneq ($(GCC_TOOLCHAIN_DIR),)
 CLANG_FLAGS	+= --prefix=$(GCC_TOOLCHAIN_DIR)$(notdir $(CROSS_COMPILE))
 GCC_TOOLCHAIN	:= $(realpath $(GCC_TOOLCHAIN_DIR)/..)
+endif
 endif
 ifneq ($(GCC_TOOLCHAIN),)
 CLANG_FLAGS	+= --gcc-toolchain=$(GCC_TOOLCHAIN)
@@ -708,13 +710,13 @@ export CFLAGS_GCOV CFLAGS_KCOV
 # Make toolchain changes before including arch/$(SRCARCH)/Makefile to ensure
 # ar/cc/ld-* macros return correct values.
 ifeq ($(ld-name),lld)
-LDFINAL_vmlinux := $(CROSS_COMPILE)ld
+LDFINAL_vmlinux ?= $(if $(shell which $(CROSS_COMPILE)ld 2>/dev/null),$(CROSS_COMPILE)ld,$(LD))
 export LDFINAL_vmlinux
 endif
 
 ifdef CONFIG_LTO_CLANG
 ifeq ($(ld-name),lld)
-LDFINAL_vmlinux := $(CROSS_COMPILE)ld
+LDFINAL_vmlinux ?= $(if $(shell which $(CROSS_COMPILE)ld 2>/dev/null),$(CROSS_COMPILE)ld,$(LD))
 ifdef CONFIG_THINLTO
 LDFLAGS		+= -mllvm -import-instr-limit=5
 endif
@@ -722,7 +724,7 @@ else
 LD_LIBRARY_PATH := $(CLANG_PREBUILTS_PATH)lib64/
 
 # use GNU gold with LLVMgold for LTO linking, and LD for vmlinux_link
-LDFINAL_vmlinux := $(LD)
+LDFINAL_vmlinux ?= $(LD)
 LD		:= $(LDGOLD)
 LDFLAGS		+= -plugin $(LD_LIBRARY_PATH)LLVMgold.so
 ifeq ($(CONFIG_ARM64_HKRR),y)
@@ -731,8 +733,13 @@ endif
 endif
 # use llvm-ar for building symbol tables from IR files, and llvm-dis instead
 # of objdump for processing symbol versions and exports
-LLVM_AR		:= $(CLANG_PREBUILT_BIN)llvm-ar
-LLVM_DIS	:= $(CLANG_PREBUILT_BIN)llvm-dis
+ifneq ($(wildcard $(CLANG_PREBUILT_BIN)llvm-ar),)
+LLVM_AR		?= $(CLANG_PREBUILT_BIN)llvm-ar
+LLVM_DIS	?= $(CLANG_PREBUILT_BIN)llvm-dis
+else
+LLVM_AR		?= $(if $(wildcard $(dir $(lastword $(CC)))llvm-ar),$(dir $(lastword $(CC)))llvm-ar,llvm-ar)
+LLVM_DIS	?= $(if $(wildcard $(dir $(lastword $(CC)))llvm-dis),$(dir $(lastword $(CC)))llvm-dis,llvm-dis)
+endif
 export LLVM_AR LLVM_DIS
 endif
 
@@ -756,6 +763,13 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, sometimes-uninitialized)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, implicit-fallthrough)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, unaligned-access)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, bitwise-instead-of-logical)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, incompatible-function-pointer-types)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, int-conversion)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, single-bit-bitfield-constant-conversion)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, cast-function-type-mismatch)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, unterminated-string-initialization)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, deprecated-non-prototype)
+KBUILD_CFLAGS	+= $(call cc-disable-warning, enum-conversion)
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS   += -Os
