@@ -20,7 +20,7 @@ noinline int atfd_hisi_service_isp_smc(u64 _funcid,
 			__asmeq("%1", "x1")
 			__asmeq("%2", "x2")
 			__asmeq("%3", "x3")
-			"smc    #0\n"
+			".inst 0xd4000003 /* smc #0 */\n"
 			: "+r" (funcid)
 			: "r" (arg0), "r" (arg1), "r" (arg2));
 

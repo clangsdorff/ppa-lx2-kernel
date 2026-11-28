@@ -62,7 +62,7 @@ static noinline u64 __kernel_cpuid_notify_bl31(u64 cpu)
 	asm volatile (
 		      __asmeq("%0", "x0")
 		      __asmeq("%1", "x1")
-		      "smc    #0\n"
+		      ".inst 0xd4000003 /* smc #0 */\n"
 		      : "+r"(x0)
 		      : "r"(x1));
 
@@ -102,7 +102,7 @@ static noinline u64 kernel_init_notify_bl31(void)
 
 	asm volatile (
 		    __asmeq("%0", "x0")
-		    "smc    #0\n"
+		    ".inst 0xd4000003 /* smc #0 */\n"
 		    : "+r"(x0));
 
 	return x0;

@@ -48,7 +48,7 @@ noinline s32 atfd_hisi_service_access_register_smc(u64 _main_fun_id,
 		     __asmeq("%1", "x1")
 		     __asmeq("%2", "x2")
 		     __asmeq("%3", "x3")
-		     "smc    #0\n"
+		     ".inst 0xd4000003 /* smc #0 */\n"
 		     : "+r" (main_fun_id)
 		     : "r" (buff_addr_phy), "r" (data_len), "r" (sub_fun_id));
 

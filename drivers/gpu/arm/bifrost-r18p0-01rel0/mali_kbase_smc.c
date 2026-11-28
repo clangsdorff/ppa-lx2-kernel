@@ -52,7 +52,7 @@ static noinline u64 invoke_smc_fid(u64 function_id,
 			__asmeq("%1", "x1")
 			__asmeq("%2", "x2")
 			__asmeq("%3", "x3")
-			"smc    #0\n"
+			".inst 0xd4000003 /* smc #0 */\n"
 			: "+r" (x0)
 			: "r" (x1), "r" (x2), "r" (x3));
 

@@ -826,7 +826,7 @@ noinline u64 atfd_hisi_service_hisee_mntn_smc(u64 _function_id,
 		__asmeq("%1", "x1")
 		__asmeq("%2", "x2")
 		__asmeq("%3", "x3")
-		"smc    #0\n"
+		".inst 0xd4000003 /* smc #0 */\n"
 		: "+r" (function_id)
 		: "r" (arg0), "r" (arg1), "r" (arg2));
 

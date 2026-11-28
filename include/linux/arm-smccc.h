@@ -170,7 +170,7 @@ static inline void __arm_smccc_smc(unsigned long a0, unsigned long a1,
 		__asmeq("%5", "x5")
 		__asmeq("%6", "x6")
 		__asmeq("%7", "x7")
-		"smc #0\n"
+		".inst 0xd4000003 /* smc #0 */\n"
 		: "+r" (arg0), "+r" (arg1), "+r" (arg2), "+r" (arg3)
 		: "r" (arg4), "r" (arg5), "r" (arg6), "r" (arg7));
 
@@ -237,7 +237,7 @@ static inline void __arm_smccc_hvc(unsigned long a0, unsigned long a1,
 /* SMCCC v1.1 implementation madness follows */
 #ifdef CONFIG_ARM64
 
-#define SMCCC_SMC_INST	"smc	#0"
+#define SMCCC_SMC_INST	".inst 0xd4000003 /* smc #0 */"
 #define SMCCC_HVC_INST	"hvc	#0"
 #define SMCCC_REG(n)	asm("x" # n)
 

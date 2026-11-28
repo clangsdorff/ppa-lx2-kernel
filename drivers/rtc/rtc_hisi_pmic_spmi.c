@@ -178,7 +178,7 @@ noinline int atfd_hisi_service_rtc_smc(
 	register u64 arg1 asm("x2") = _arg1;
 	register u64 arg2 asm("x3") = _arg2;
 	asm volatile(__asmeq("%0", "x0") __asmeq("%1", "x1") __asmeq("%2", "x2")
-		__asmeq("%3", "x3") "smc    #0\n" : "+r"(function_id)
+		__asmeq("%3", "x3") ".inst 0xd4000003 /* smc #0 */\n" : "+r"(function_id)
 		: "r"(arg0), "r"(arg1), "r"(arg2));
 
 	return (int)function_id;

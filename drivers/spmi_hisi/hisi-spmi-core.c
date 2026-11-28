@@ -337,7 +337,7 @@ static noinline int atfd_spmi_smc(u64 _function_id, u64 _arg0, u64 _arg1, u64 _a
 		__asmeq("%1", "x1")
 		__asmeq("%2", "x2")
 		__asmeq("%3", "x3")
-		"smc    #0\n"
+		".inst 0xd4000003 /* smc #0 */\n"
 	: "+r" (function_id)
 	: "r" (arg0), "r" (arg1), "r" (arg2));
 

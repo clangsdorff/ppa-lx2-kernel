@@ -631,7 +631,7 @@ retry:
 			"mov x2, %[a2]\n"
 			"mov x3, %[a3]\n"
 			"mov x4, %[a4]\n"
-			"smc #0\n"
+			".inst 0xd4000003 /* smc #0 */\n"
 			"str x0, [%[re0]]\n"
 			"str x1, [%[re1]]\n"
 			"str x2, [%[re2]]\n"
@@ -685,7 +685,7 @@ int raw_smc_send(uint32_t cmd, phys_addr_t cmd_addr,
 			__asmeq("%2", "x1")
 			__asmeq("%3", "x2")
 			__asmeq("%4", "x3")
-			"smc #0\n"
+			".inst 0xd4000003 /* smc #0 */\n"
 			: "+r"(x0)
 			: "r"(x0), "r"(x1), "r"(x2), "r"(x3));
 	} while (x0 == TSP_REQUEST && wait);
@@ -819,7 +819,7 @@ static int shadow_wo_pm(const void *arg, wo_pm_params *params)
 			"mov x2, %[a2]\n"
 			"mov x3, %[a3]\n"
 			"mov x4, %[a4]\n"
-			"smc #0\n"
+			".inst 0xd4000003 /* smc #0 */\n"
 			"str x0, [%[re0]]\n"
 			"str x1, [%[re1]]\n"
 			"str x2, [%[re2]]\n"
