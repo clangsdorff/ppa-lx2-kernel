@@ -172,9 +172,12 @@ zinstall install:
 %.dtb: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts/auto-generate/config $(boot)/dts/auto-generate/$@
 
+# the auto-generate dts tree is not part of the opensource release
 dtbs: scripts
+ifneq ($(wildcard $(srctree)/$(boot)/dts/auto-generate/config/Makefile),)
 	$(Q)$(MAKE) $(build)=$(boot)/dts/auto-generate/config dtbs
 	$(Q)$(MAKE) $(build)=$(boot)/dts/auto-generate/overlay dtbs
+endif
 
 dtbs_install:
 	$(Q)$(MAKE) $(dtbinst)=$(boot)/dts
