@@ -626,7 +626,7 @@ static u8 sil_q[SIL_MSG_QLEN];
 static unsigned int sil_q_head;
 static unsigned int sil_q_cnt;
 static bool sil_inited;
-static bool sil_vote_held;
+static unsigned int sil_vote_cnt;
 static struct file *sil_owner;
 static bool sil_first_read;
 static u8 sil_spi_mode;
@@ -636,8 +636,10 @@ static u32 sil_spi_speed = 8000000;
 static u32 sil_spi_mode32;
 static u8 sil_dbg_level;
 
-/* bulk reads stream across CS changes (first byte of each CS is junk); 68 B per CS proven */
-static int sil_rd_chunk = 64;
+/* bulk reads stream across CS changes; IOMCU caps rx at SIL_FW_RX_MAX (84 B) */
+static int sil_spi_mhz = 10;
+module_param(sil_spi_mhz, int, 0644);
+static int sil_rd_chunk = 84;
 module_param(sil_rd_chunk, int, 0644);
 static int sil_hdr3_prime = 1;
 module_param(sil_hdr3_prime, int, 0644);
@@ -656,15 +658,24 @@ module_param(sil_frame_stats, int, 0644);
 #define SIL_FW_RX_MAX		84
 #define SIL_FW_MAX_ROWS		(((SIL_FW_RX_MAX - SIL_FRAME_SRC_W) / SIL_FRAME_OUT_W) + 1)
 #define SIL_FRAME_OUT_LEN	(SIL_FRAME_OUT_W * SIL_FRAME_ROWS)
+#define SIL_PARTIAL_LEN		1024
 #define SIL_REG_PAGE		0xf0
 #define SIL_WIN_PAGE		(0xff080150 >> 7)
 #define SIL_WIN_REG		(0xff080150 & 0x7f)
 #define SIL_WIN_W36		8
+#define SIL_PAGE_INVALID	U32_MAX
+#define SIL_MODE_UNKNOWN	(-1)
+#define SIL_MODE_PARTIAL	0
+#define SIL_MODE_FULL		1
 
 enum { SIL_FW_IDLE, SIL_FW_ARMED, SIL_FW_ACTIVE };
 
 static u32 sil_page;
+static u32 sil_cur_page = SIL_PAGE_INVALID;
 static u32 sil_win;
+static int sil_mode_cur = SIL_MODE_UNKNOWN;
+static atomic_t sil_irq_pending = ATOMIC_INIT(0);
+static atomic_t sil_wait_cancel = ATOMIC_INIT(0);
 static int sil_fw_state;
 static u32 sil_fw_off;
 static u32 sil_fw_row0;
@@ -673,6 +684,26 @@ static u32 sil_fw_n = 1;
 static u32 sil_fw_ipc;
 static ktime_t sil_fw_t0;
 static u8 sil_fw_buf[SIL_FW_BUF_LEN];
+
+static void sil_vote_acquire(void)
+{
+	if (sil_vote_cnt++ == 0)
+		hisi_idle_sleep_vote(ID_IOMCU, 1);
+}
+
+static void sil_vote_release(void)
+{
+	if (sil_vote_cnt && --sil_vote_cnt == 0)
+		hisi_idle_sleep_vote(ID_IOMCU, 0);
+}
+
+static void sil_inval_cache(void)
+{
+	sil_cur_page = SIL_PAGE_INVALID;
+	sil_mode_cur = SIL_MODE_UNKNOWN;
+	sil_first_read = false;
+	sil_fw_state = SIL_FW_IDLE;
+}
 
 static void sil_queue_msg(u8 msg)
 {
@@ -727,7 +758,9 @@ static union fp_spi_ctrl sil_spi_ctrl(struct fp_data *fp)
 {
 	union fp_spi_ctrl ctrl;
 
-	ctrl.data = (u32)(gpio_is_valid(fp->cs0_gpio) ? fp->cs0_gpio : 217);
+	ctrl.data = 0;
+	ctrl.b.gpio_cs = (u16)(gpio_is_valid(fp->cs0_gpio) ? fp->cs0_gpio : 217);
+	ctrl.b.baudrate = clamp(sil_spi_mhz, 0, 31);
 	return ctrl;
 }
 
@@ -754,8 +787,10 @@ static int sil_frame_row_read(union fp_spi_ctrl ctrl, u32 row, u32 n)
 	u32 rx_len = (n - 1) * SIL_FRAME_OUT_W + SIL_FRAME_SRC_W;
 
 	sil_fw_ipc++;
-	if (mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2, sil_fw_buf, rx_len))
+	if (mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2, sil_fw_buf, rx_len)) {
+		sil_inval_cache();
 		return -EIO;
+	}
 	sil_fw_row0 = row;
 	sil_fw_nrows = n;
 	return 0;
@@ -776,6 +811,23 @@ static int sil_frame_fetch(union fp_spi_ctrl ctrl, u32 row)
 	return sil_frame_row_read(ctrl, row, 1);
 }
 
+static inline u8 sil_frame_pixel(u32 k, u32 col)
+{
+	u32 max_col, idx;
+
+	if (sil_fw_nrows > 1 && k == 0 && col == 0) {
+		idx = SIL_FRAME_OUT_W;
+	} else if (sil_fw_nrows > 1 && k + 1 == sil_fw_nrows &&
+		   col >= SIL_FRAME_SRC_W) {
+		idx = (k - 1) * SIL_FRAME_OUT_W + col;
+	} else {
+		max_col = (k + 1 < sil_fw_nrows) ?
+			  (SIL_FRAME_OUT_W - 1) : (SIL_FRAME_SRC_W - 1);
+		idx = k * SIL_FRAME_OUT_W + min(col, max_col);
+	}
+	return sil_fw_buf[idx];
+}
+
 static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 {
 	static const u8 rd[2] = { 0x00, 0x00 };
@@ -792,13 +844,15 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 		sil_fw_t0 = ktime_get();
 		if (hdr == 3) {
 			r = sil_spi_tx(ctrl, (u8 *)rd, 2);
-			if (r)
+			if (r) {
+				sil_inval_cache();
 				return r;
+			}
 		}
 	}
 
 	for (i = 0; i < dlen; i++, sil_fw_off++) {
-		u32 row, col, k, max_col, idx;
+		u32 row, col;
 
 		if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
 			out[i] = 0;
@@ -810,22 +864,11 @@ static int sil_frame_read(union fp_spi_ctrl ctrl, u32 hdr, u32 len, u8 *rx)
 		    row >= sil_fw_row0 + sil_fw_nrows) {
 			r = sil_frame_fetch(ctrl, row);
 			if (r) {
-				sil_fw_state = SIL_FW_IDLE;
+				sil_inval_cache();
 				return r;
 			}
 		}
-		k = row - sil_fw_row0;
-		if (sil_fw_nrows > 1 && k == 0 && col == 0) {
-			idx = SIL_FRAME_OUT_W;
-		} else if (sil_fw_nrows > 1 && k + 1 == sil_fw_nrows &&
-			   col >= SIL_FRAME_SRC_W) {
-			idx = (k - 1) * SIL_FRAME_OUT_W + col;
-		} else {
-			max_col = (k + 1 < sil_fw_nrows) ?
-				  (SIL_FRAME_OUT_W - 1) : (SIL_FRAME_SRC_W - 1);
-			idx = k * SIL_FRAME_OUT_W + min(col, max_col);
-		}
-		out[i] = sil_fw_buf[idx];
+		out[i] = sil_frame_pixel(row - sil_fw_row0, col);
 	}
 	if (sil_fw_off >= SIL_FRAME_OUT_LEN) {
 		sil_fw_state = SIL_FW_IDLE;
@@ -856,25 +899,42 @@ static int sil_spi_xfer(struct fp_data *fp, u8 *tx, u8 *rx, u32 len)
 		return -EINVAL;
 
 	if (tx[1] == 0xff) {
+		bool is_page_wr = false;
+		u32 page_val = 0;
+
 		if (len > SIL_SPI_MAX_WR)
 			return -EMSGSIZE;
 		if (len >= 6) {
 			u32 val = get_unaligned_le32(tx + 2);
 
 			if (tx[0] == SIL_REG_PAGE) {
+				is_page_wr = true;
+				page_val = val;
 				sil_page = val;
 				sil_fw_state = val ? SIL_FW_IDLE : SIL_FW_ARMED;
 			} else {
 				sil_fw_state = SIL_FW_IDLE;
-				if (tx[0] == SIL_WIN_REG && sil_page == SIL_WIN_PAGE)
+				if (tx[0] == SIL_WIN_REG && sil_page == SIL_WIN_PAGE) {
 					sil_win = val;
+					sil_mode_cur = SIL_MODE_UNKNOWN;
+				} else if (sil_page == (0xff080000 >> 7) &&
+					   (tx[0] == 0x54 || tx[0] == 0x00)) {
+					sil_mode_cur = SIL_MODE_UNKNOWN;
+				}
 			}
 		} else {
 			sil_fw_state = SIL_FW_IDLE;
 		}
 		if (tx[0] == 0xf0)
 			sil_first_read = true;
-		return sil_spi_tx(ctrl, tx, len);
+		r = sil_spi_tx(ctrl, tx, len);
+		if (r) {
+			sil_inval_cache();
+			return r;
+		}
+		if (is_page_wr)
+			sil_cur_page = page_val;
+		return 0;
 	}
 	if (tx[1] != 0x00)
 		return -EINVAL;
@@ -907,8 +967,10 @@ static int sil_spi_xfer(struct fp_data *fp, u8 *tx, u8 *rx, u32 len)
 			return -EINVAL;
 		}
 		r = sil_spi_tx(ctrl, hb, 2);
-		if (r)
+		if (r) {
+			sil_inval_cache();
 			return r;
+		}
 		hdr_tx = 2;
 	}
 
@@ -923,8 +985,10 @@ static int sil_spi_xfer(struct fp_data *fp, u8 *tx, u8 *rx, u32 len)
 			ipcs++;
 			r = mcu_spi_rw(SIL_SPI_BUS, ctrl, hb, off ? 2 : hdr_tx,
 				       rx + hdr + off, n);
-			if (r)
+			if (r) {
+				sil_inval_cache();
 				return -EIO;
+			}
 		}
 		if (sil_frame_stats && dlen >= 256)
 			pr_info_ratelimited("%s: bulk %u B, %lld us, %u ipc, chunk %u\n",
@@ -953,6 +1017,7 @@ static long sil_spi_message(struct fp_data *fp, unsigned int cmd,
 	if (IS_ERR(xf))
 		return PTR_ERR(xf);
 
+	sil_vote_acquire();
 	for (i = 0; i < cnt; i++) {
 		u32 len = xf[i].len;
 		void __user *utx;
@@ -989,6 +1054,7 @@ static long sil_spi_message(struct fp_data *fp, unsigned int cmd,
 			break;
 		total += len;
 	}
+	sil_vote_release();
 	kfree(xf);
 	return r ? r : total;
 }
@@ -1063,10 +1129,8 @@ static long sil_spi_ioctl(struct fp_data *fp, unsigned int cmd,
 	return ret;
 }
 
-static int sil_hw_step1(struct fp_data *fp, int *cs_req, int *irq_val)
+static void sil_hw_step1(struct fp_data *fp, int *cs_req, int *irq_val)
 {
-	int vote_ret = hisi_idle_sleep_vote(ID_IOMCU, 1);
-
 	*cs_req = -1;
 	*irq_val = -1;
 	fingerprint_sensor_poweron(fp, FP_LDO_TYPE_EXTERN);
@@ -1085,7 +1149,6 @@ static int sil_hw_step1(struct fp_data *fp, int *cs_req, int *irq_val)
 	}
 	if (gpio_is_valid(fp->irq_gpio))
 		*irq_val = gpio_get_value(fp->irq_gpio);
-	return vote_ret;
 }
 
 static int sil_hw_step2(u32 *clk0, u32 *clk1, u32 *rst0, u32 *rst1)
@@ -1312,6 +1375,7 @@ static irqreturn_t fingerprint_irq_handler(int irq, void *handle)
 
 	if (READ_ONCE(sil_inited) && gpio_get_value(fp->irq_gpio)) {
 		__pm_wakeup_event(&sil_ws, SIL_WS_IRQ_MS);
+		atomic_set(&sil_irq_pending, 1);
 		sil_queue_msg(SIL_MSG_IRQ);
 	}
 	sysfs_notify(&fp->pf_dev->dev.kobj, NULL,
@@ -2307,6 +2371,370 @@ struct fp_dev_conf_t {
 #define SIFP_IOC_PWDN		_IOW(SIFP_IOC_MAGIC, 28, u8)
 #define SIFP_IOC_PROC_NODE	_IOW(SIFP_IOC_MAGIC, 29, char[32])
 
+#define SIL_EXEC_MAX_REGS	32
+#define SIL_EXEC_F_INVAL_PAGE	(1U << 0)
+
+struct sil_reg_pair {
+	__u32 addr;
+	__u32 val;
+};
+
+struct sil_exec_regs {
+	__u32 count;
+	__u32 flags;
+	struct sil_reg_pair regs[SIL_EXEC_MAX_REGS];
+};
+
+#define SIL_CAP_MODE_PARTIAL	0
+#define SIL_CAP_MODE_FULL	1
+
+#define SIL_CAP_F_SET_GAIN	(1U << 0)
+#define SIL_CAP_F_FORCE_MODE	(1U << 1)
+
+#define SIL_CAP_STATUS_OK	0
+#define SIL_CAP_STATUS_TIMEOUT	1
+#define SIL_CAP_STATUS_SPI_ERR	2
+
+struct sil_capture_frame {
+	__u32 mode;
+	__u32 gain_v0c;
+	__u32 gain_v20;
+	__u32 poll_us;
+	__u32 timeout_ms;
+	__u32 flags;
+	__u64 buf_ptr;
+	__u32 buf_len;
+	__u32 out_status;
+};
+
+#define SIL_WAIT_EVENT_TIMEOUT	0
+#define SIL_WAIT_EVENT_IRQ	1
+#define SIL_WAIT_EVENT_CANCEL	2
+
+#define SIL_WAIT_F_CLEAR_IRQ	(1U << 0)
+#define SIL_WAIT_F_CLEAR_CANCEL	(1U << 1)
+
+struct sil_wait_irq_arg {
+	__u32 timeout_ms;
+	__u32 flags;
+	__u32 out_event;
+	__u32 reserved;
+};
+
+#define SIL_IOC_EXEC_REGS	_IOW(SIFP_IOC_MAGIC, 40, struct sil_exec_regs)
+#define SIL_IOC_CAPTURE_FRAME	_IOWR(SIFP_IOC_MAGIC, 41, struct sil_capture_frame)
+#define SIL_IOC_WAIT_IRQ	_IOWR(SIFP_IOC_MAGIC, 42, struct sil_wait_irq_arg)
+#define SIL_IOC_CANCEL_WAIT	_IO(SIFP_IOC_MAGIC, 43)
+
+/* GSL6157B partial (32x32) and full (36x160) window configurations */
+static const struct sil_reg_pair sil_reg_partial[] = {
+	{ 0xff080054, 0x00000100 },
+	{ 0xff080150, 0x00610007 },
+	{ 0xff080154, 0x00410000 },
+	{ 0xff080188, 0x08004000 },
+	{ 0xff080110, 0x04100302 },
+	{ 0xff080164, 0x00000000 },
+	{ 0xff080168, 0x00000000 },
+	{ 0xff08016c, 0x00000000 },
+	{ 0xff080130, 0x00000201 },
+	{ 0xff080000, 0x20226040 },
+};
+
+static const struct sil_reg_pair sil_reg_full[] = {
+	{ 0xff080054, 0x000005a0 },
+	{ 0xff080150, 0x009f0008 },
+	{ 0xff080154, 0x00000000 },
+	{ 0xff080188, 0x0001f000 },
+	{ 0xff080110, 0x9f010009 },
+	{ 0xff080164, 0xffffffff },
+	{ 0xff080168, 0xffffffff },
+	{ 0xff08016c, 0xffffffff },
+	{ 0xff080130, 0x00000101 },
+	{ 0xff080000, 0x20227040 },
+};
+
+static int sil_set_page(union fp_spi_ctrl ctrl, u32 page, bool force)
+{
+	u8 tx[6];
+	int r;
+
+	if (!force && sil_cur_page == page)
+		return 0;
+
+	tx[0] = SIL_REG_PAGE;
+	tx[1] = 0xff;
+	put_unaligned_le32(page, tx + 2);
+	r = sil_spi_tx(ctrl, tx, sizeof(tx));
+	if (r) {
+		sil_inval_cache();
+		return r;
+	}
+	sil_cur_page = page;
+	sil_page = page;
+	sil_first_read = true;
+	return 0;
+}
+
+static int sil_write_reg(union fp_spi_ctrl ctrl, u32 addr, u32 val)
+{
+	u8 tx[6];
+	u8 reg;
+	int r;
+
+	if (addr >= 0x80 && addr <= 0xff) {
+		reg = (u8)addr;
+	} else {
+		u32 page = addr >> 7;
+
+		reg = (u8)(addr & 0x7f);
+		r = sil_set_page(ctrl, page, false);
+		if (r)
+			return r;
+	}
+
+	tx[0] = reg;
+	tx[1] = 0xff;
+	put_unaligned_le32(val, tx + 2);
+	r = sil_spi_tx(ctrl, tx, sizeof(tx));
+	if (r) {
+		sil_inval_cache();
+		return r;
+	}
+
+	if (addr == SIL_REG_PAGE) {
+		sil_cur_page = val;
+		sil_page = val;
+		sil_first_read = true;
+	} else if (addr == 0xff080150) {
+		sil_win = val;
+		sil_mode_cur = SIL_MODE_UNKNOWN;
+	} else if (addr == 0xff080054 || addr == 0xff080000) {
+		sil_mode_cur = SIL_MODE_UNKNOWN;
+	}
+	return 0;
+}
+
+static int sil_capture_partial(union fp_spi_ctrl ctrl, u8 *out)
+{
+	static const u8 rd[2] = { 0x00, 0x00 };
+	u32 chunk = clamp(sil_rd_chunk, 1, SIL_FW_RX_MAX);
+	u32 off, n;
+	int r;
+
+	r = sil_spi_tx(ctrl, (u8 *)rd, 2);
+	if (r) {
+		sil_inval_cache();
+		return r;
+	}
+	sil_first_read = false;
+
+	for (off = 0; off < SIL_PARTIAL_LEN; off += n) {
+		n = min(chunk, SIL_PARTIAL_LEN - off);
+		r = mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)rd, 2, out + off, n);
+		if (r) {
+			sil_inval_cache();
+			return -EIO;
+		}
+	}
+	return 0;
+}
+
+static int sil_capture_full(union fp_spi_ctrl ctrl, u8 *out)
+{
+	static const u8 rd[2] = { 0x00, 0x00 };
+	u32 row, k, col;
+	int r;
+
+	sil_fw_n = clamp(sil_frame_rows_per_xfer, 1, SIL_FW_MAX_ROWS);
+	sil_fw_nrows = 0;
+	sil_fw_ipc = 0;
+	sil_fw_t0 = ktime_get();
+
+	r = sil_spi_tx(ctrl, (u8 *)rd, 2);
+	if (r) {
+		sil_inval_cache();
+		return r;
+	}
+	sil_first_read = false;
+
+	for (row = 0; row < SIL_FRAME_ROWS; row += sil_fw_nrows) {
+		r = sil_frame_fetch(ctrl, row);
+		if (r)
+			return r;
+		for (k = 0; k < sil_fw_nrows; k++) {
+			u8 *dst = out + (row + k) * SIL_FRAME_OUT_W;
+
+			for (col = 0; col < SIL_FRAME_OUT_W; col++)
+				dst[col] = sil_frame_pixel(k, col);
+		}
+	}
+
+	sil_fw_state = SIL_FW_IDLE;
+	if (sil_frame_stats)
+		pr_info_ratelimited("%s: frame %lld us, %u ipc, %u rows/xfer\n",
+				    __func__,
+				    ktime_us_delta(ktime_get(), sil_fw_t0),
+				    sil_fw_ipc, sil_fw_n);
+	return 0;
+}
+
+static long sil_exec_regs(struct fp_data *fp, void __user *argp)
+{
+	struct sil_exec_regs req;
+	union fp_spi_ctrl ctrl;
+	u32 i;
+	int r = 0;
+
+	BUILD_BUG_ON(sizeof(struct sil_reg_pair) != 8);
+	BUILD_BUG_ON(sizeof(struct sil_exec_regs) != 264);
+
+	if (!sil_inited)
+		return -ENODEV;
+	if (copy_from_user(&req, argp, sizeof(req)))
+		return -EFAULT;
+	if (req.count > SIL_EXEC_MAX_REGS)
+		return -EINVAL;
+	if (!req.count)
+		return 0;
+
+	if (req.flags & SIL_EXEC_F_INVAL_PAGE)
+		sil_cur_page = SIL_PAGE_INVALID;
+
+	ctrl = sil_spi_ctrl(fp);
+	sil_vote_acquire();
+	for (i = 0; i < req.count; i++) {
+		r = sil_write_reg(ctrl, req.regs[i].addr, req.regs[i].val);
+		if (r)
+			break;
+	}
+	sil_vote_release();
+	return r;
+}
+
+static long sil_capture_frame(struct fp_data *fp, void __user *argp)
+{
+	struct sil_capture_frame req;
+	union fp_spi_ctrl ctrl;
+	const struct sil_reg_pair *mode_tbl;
+	u8 __user *ubuf;
+	u8 *kbuf;
+	u32 need_len, poll_us, timeout_ms, i;
+	unsigned long poll_min;
+	ktime_t deadline;
+	int r = 0;
+
+	BUILD_BUG_ON(sizeof(struct sil_capture_frame) != 40);
+
+	if (copy_from_user(&req, argp, sizeof(req)))
+		return -EFAULT;
+	if (req.mode == SIL_CAP_MODE_PARTIAL) {
+		need_len = SIL_PARTIAL_LEN;
+		mode_tbl = sil_reg_partial;
+	} else if (req.mode == SIL_CAP_MODE_FULL) {
+		need_len = SIL_FRAME_OUT_LEN;
+		mode_tbl = sil_reg_full;
+	} else {
+		return -EINVAL;
+	}
+	if (!req.buf_ptr || req.buf_len < need_len)
+		return -EINVAL;
+
+	ubuf = u64_to_user_ptr(req.buf_ptr);
+	poll_us = req.poll_us ? clamp_t(u32, req.poll_us, 250, 50000) : 1500;
+	poll_min = poll_us - 200;
+	timeout_ms = req.timeout_ms ? clamp_t(u32, req.timeout_ms, 10, 5000) : 500;
+
+	kbuf = kmalloc(need_len, GFP_KERNEL);
+	if (!kbuf)
+		return -ENOMEM;
+
+	req.out_status = SIL_CAP_STATUS_SPI_ERR;
+	mutex_lock(&sil_lock);
+	if (!sil_inited) {
+		mutex_unlock(&sil_lock);
+		kfree(kbuf);
+		return -ENODEV;
+	}
+
+	ctrl = sil_spi_ctrl(fp);
+	sil_vote_acquire();
+
+	if ((req.flags & SIL_CAP_F_SET_GAIN) || req.gain_v0c) {
+		r = sil_write_reg(ctrl, 0xff08000c, req.gain_v0c);
+		if (r)
+			goto out_vote;
+	}
+	if ((req.flags & SIL_CAP_F_SET_GAIN) || req.gain_v20) {
+		r = sil_write_reg(ctrl, 0xff000020, req.gain_v20);
+		if (r)
+			goto out_vote;
+	}
+
+	if ((req.flags & SIL_CAP_F_FORCE_MODE) || sil_mode_cur != (int)req.mode) {
+		for (i = 0; i < ARRAY_SIZE(sil_reg_partial); i++) {
+			r = sil_write_reg(ctrl, mode_tbl[i].addr, mode_tbl[i].val);
+			if (r)
+				goto out_vote;
+		}
+		sil_mode_cur = (int)req.mode;
+		sil_win = (req.mode == SIL_CAP_MODE_PARTIAL) ?
+			  0x00610007 : 0x009f0008;
+	}
+
+	r = sil_write_reg(ctrl, 0xbf, 0);
+	if (r)
+		goto out_vote;
+	r = sil_write_reg(ctrl, 0xff080024, 0);
+	if (r)
+		goto out_vote;
+
+	deadline = ktime_add_ms(ktime_get(), timeout_ms);
+	for (;;) {
+		static const u8 bf_cmd[2] = { 0xbf, 0x00 };
+		u8 bf_rx[4];
+
+		usleep_range(poll_min, poll_us);
+		if (mcu_spi_rw(SIL_SPI_BUS, ctrl, (u8 *)bf_cmd, 2, bf_rx, 4)) {
+			sil_inval_cache();
+			r = -EIO;
+			goto out_vote;
+		}
+		if (get_unaligned_le32(bf_rx))
+			break;
+		if (ktime_after(ktime_get(), deadline)) {
+			req.out_status = SIL_CAP_STATUS_TIMEOUT;
+			r = -ETIMEDOUT;
+			goto out_vote;
+		}
+	}
+
+	/* reset sensor FIFO pointer before reading frame */
+	r = sil_set_page(ctrl, 0, true);
+	if (r)
+		goto out_vote;
+
+	if (req.mode == SIL_CAP_MODE_PARTIAL)
+		r = sil_capture_partial(ctrl, kbuf);
+	else
+		r = sil_capture_full(ctrl, kbuf);
+
+	if (!r)
+		req.out_status = SIL_CAP_STATUS_OK;
+
+out_vote:
+	sil_vote_release();
+	mutex_unlock(&sil_lock);
+
+	if (!r && copy_to_user(ubuf, kbuf, need_len))
+		r = -EFAULT;
+	kfree(kbuf);
+	if (put_user(req.out_status,
+		     &((struct sil_capture_frame __user *)argp)->out_status) &&
+	    !r)
+		r = -EFAULT;
+	return r;
+}
+
 static int sil_do_init(struct fp_data *fp, struct file *file,
 		       void __user *argp)
 {
@@ -2320,17 +2748,16 @@ static int sil_do_init(struct fp_data *fp, struct file *file,
 		return -EBUSY;
 
 	if (!sil_inited) {
+		sil_vote_acquire();
 		sil_hw_step1(fp, &cs_req, &irq_val);
-		sil_vote_held = true;
 		r = sil_hw_step2(&clk0, &clk1, &rst0, &rst1);
-		if (r) {
-			hisi_idle_sleep_vote(ID_IOMCU, 0);
-			sil_vote_held = false;
+		sil_vote_release();
+		if (r)
 			return r;
-		}
 		sil_queue_drop(-1);
-		sil_first_read = false;
-		sil_fw_state = SIL_FW_IDLE;
+		atomic_set(&sil_irq_pending, 0);
+		atomic_set(&sil_wait_cancel, 0);
+		sil_inval_cache();
 		sil_page = 0;
 		sil_win = 0;
 		sil_owner = file;
@@ -2353,12 +2780,15 @@ static void sil_do_deinit(void)
 	if (!sil_inited)
 		return;
 	sil_queue_drop(-1);
+	atomic_set(&sil_irq_pending, 0);
+	atomic_set(&sil_wait_cancel, 1);
 	sil_queue_msg(SIL_MSG_DISCONNECT);
 	WRITE_ONCE(sil_inited, false);
+	sil_inval_cache();
 	sil_owner = NULL;
-	if (sil_vote_held) {
+	if (sil_vote_cnt) {
 		hisi_idle_sleep_vote(ID_IOMCU, 0);
-		sil_vote_held = false;
+		sil_vote_cnt = 0;
 	}
 }
 
@@ -2378,6 +2808,72 @@ static long sil_wait_irq(struct file *file, void __user *argp)
 	return put_user(msg, (u8 __user *)argp);
 }
 
+static long sil_fast_wait_irq(struct file *file, void __user *argp)
+{
+	struct sil_wait_irq_arg req;
+	long rem;
+	int ev = -1;
+
+	BUILD_BUG_ON(sizeof(struct sil_wait_irq_arg) != 16);
+
+	if (argp) {
+		if (copy_from_user(&req, argp, sizeof(req)))
+			return -EFAULT;
+	} else {
+		memset(&req, 0, sizeof(req));
+	}
+
+	if (req.flags & SIL_WAIT_F_CLEAR_IRQ) {
+		atomic_set(&sil_irq_pending, 0);
+		sil_queue_drop(SIL_MSG_IRQ);
+	}
+	if (req.flags & SIL_WAIT_F_CLEAR_CANCEL)
+		atomic_set(&sil_wait_cancel, 0);
+
+	for (;;) {
+		if (atomic_xchg(&sil_wait_cancel, 0)) {
+			ev = SIL_WAIT_EVENT_CANCEL;
+			break;
+		}
+		if (!READ_ONCE(sil_inited))
+			return -ENODEV;
+		if (atomic_xchg(&sil_irq_pending, 0)) {
+			sil_queue_drop(SIL_MSG_IRQ);
+			ev = SIL_WAIT_EVENT_IRQ;
+			break;
+		}
+		if (ev == SIL_WAIT_EVENT_TIMEOUT)
+			break;
+		if (file->f_flags & O_NONBLOCK)
+			return -EAGAIN;
+
+		if (!req.timeout_ms) {
+			if (wait_event_interruptible(sil_wq,
+				atomic_read(&sil_wait_cancel) ||
+				atomic_read(&sil_irq_pending) ||
+				!READ_ONCE(sil_inited)))
+				return -ERESTARTSYS;
+		} else {
+			rem = wait_event_interruptible_timeout(sil_wq,
+				atomic_read(&sil_wait_cancel) ||
+				atomic_read(&sil_irq_pending) ||
+				!READ_ONCE(sil_inited),
+				msecs_to_jiffies(req.timeout_ms));
+			if (rem < 0)
+				return -ERESTARTSYS;
+			if (rem == 0)
+				ev = SIL_WAIT_EVENT_TIMEOUT;
+		}
+	}
+
+	if (argp) {
+		req.out_event = (u32)ev;
+		if (copy_to_user(argp, &req, sizeof(req)))
+			return -EFAULT;
+	}
+	return ev;
+}
+
 static long sil_ioctl(struct file *file, struct fp_data *fp,
 		      unsigned int cmd, void __user *argp)
 {
@@ -2387,6 +2883,15 @@ static long sil_ioctl(struct file *file, struct fp_data *fp,
 
 	if (cmd == SIFP_IOC_WAIT_IRQ)
 		return sil_wait_irq(file, argp);
+	if (cmd == SIL_IOC_WAIT_IRQ)
+		return sil_fast_wait_irq(file, argp);
+	if (cmd == SIL_IOC_CANCEL_WAIT) {
+		atomic_set(&sil_wait_cancel, 1);
+		wake_up_interruptible(&sil_wq);
+		return 0;
+	}
+	if (cmd == SIL_IOC_CAPTURE_FRAME)
+		return sil_capture_frame(fp, argp);
 
 	mutex_lock(&sil_lock);
 	switch (cmd) {
@@ -2410,11 +2915,12 @@ static long sil_ioctl(struct file *file, struct fp_data *fp,
 		usleep_range(v8 * 1000, v8 * 1000 + 500);
 		gpio_direction_output(fp->rst_gpio, 1);
 		usleep_range(v8 * 1000, v8 * 1000 + 500);
-		sil_first_read = false;
-		sil_fw_state = SIL_FW_IDLE;
+		sil_inval_cache();
 		break;
 	case SIFP_IOC_ENABLE_IRQ:
 		sil_queue_drop(SIL_MSG_IRQ);
+		atomic_set(&sil_irq_pending, 0);
+		atomic_set(&sil_wait_cancel, 0);
 		fp_ioc_enable_irq(fp);
 		break;
 	case SIFP_IOC_DISABLE_IRQ:
@@ -2422,6 +2928,11 @@ static long sil_ioctl(struct file *file, struct fp_data *fp,
 		break;
 	case SIFP_IOC_CLR_IRQ:
 		sil_queue_drop(SIL_MSG_IRQ);
+		atomic_set(&sil_irq_pending, 0);
+		atomic_set(&sil_wait_cancel, 0);
+		break;
+	case SIL_IOC_EXEC_REGS:
+		ret = sil_exec_regs(fp, argp);
 		break;
 	case SIFP_IOC_IRQ_STATUS:
 		ret = put_user((u8)fingerprint_get_irq_status(fp),
