@@ -297,7 +297,11 @@ AES_ENTRY(aes_ctr_encrypt)
 	eor		v1.16b, v1.16b, v3.16b
 	st1		{v0.16b-v1.16b}, [x0], #32
 #else
-	ldr		q8, =0x30000000200000001	/* addends 1,2,3[,0] */
+	mov		x12, #1				/* addends 1,2,3[,0] */
+	movk		x12, #2, lsl #32
+	mov		x13, #3
+	ins		v8.d[0], x12
+	ins		v8.d[1], x13
 	dup		v7.4s, w8
 	mov		v0.16b, v4.16b
 	add		v7.4s, v7.4s, v8.4s
